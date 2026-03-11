@@ -162,8 +162,8 @@ func (a *app) printCardInfo(card *detect.Card, result *analyze.Result) {
 		pct = (card.UsedBytes * 100) / card.TotalBytes
 	}
 	fmt.Printf("  Storage:  %s / %s (%d%%)\n",
-		formatBytes(card.UsedBytes),
-		formatBytes(card.TotalBytes),
+		detect.FormatBytes(card.UsedBytes),
+		detect.FormatBytes(card.TotalBytes),
 		pct)
 	fmt.Printf("  Brand:    %s\n", card.Brand)
 	if result != nil && result.Gear != "" {
@@ -192,13 +192,13 @@ func (a *app) printCardInfo(card *detect.Card, result *analyze.Result) {
 			}
 			fmt.Printf("%s   %10s   %*d   %s\n",
 				g.Date,
-				formatBytes(g.Size),
+				detect.FormatBytes(g.Size),
 				countWidth,
 				g.FileCount,
 				strings.Join(g.Extensions, ", "))
 		}
 		fmt.Println()
-		fmt.Printf("  Total:    %d photos, %d videos, %s\n", result.PhotoCount, result.VideoCount, formatBytes(result.TotalSize))
+		fmt.Printf("  Total:    %d photos, %d videos, %s\n", result.PhotoCount, result.VideoCount, detect.FormatBytes(result.TotalSize))
 	} else {
 		fmt.Println("  Content:  (empty)")
 	}
@@ -334,18 +334,4 @@ func readInput(ch chan<- string) {
 	}
 }
 
-func formatBytes(b int64) string {
-	const unit = 1024
-	if b <= 0 {
-		return "0 B"
-	}
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
-}
+

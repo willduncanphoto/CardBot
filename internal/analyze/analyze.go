@@ -243,7 +243,9 @@ func readExif(path string, xmpBuf []byte) (date time.Time, gear string, rating i
 	xmpData := xmpBuf[:n]
 
 	// Seek back for EXIF decode.
-	f.Seek(0, io.SeekStart)
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return time.Time{}, "", 0, false
+	}
 
 	exif, err := imagemeta.Decode(f)
 	if err != nil {
@@ -251,13 +253,13 @@ func readExif(path string, xmpBuf []byte) (date time.Time, gear string, rating i
 	}
 
 	// Camera model: combine Make + Model, dedup if Model already contains Make.
-	make_ := strings.TrimSpace(exif.Make)
+	cameraMake := strings.TrimSpace(exif.Make)
 	model := strings.TrimSpace(exif.Model)
-	if make_ != "" && model != "" {
-		if strings.HasPrefix(strings.ToLower(model), strings.ToLower(make_)) {
+	if cameraMake != "" && model != "" {
+		if strings.HasPrefix(strings.ToLower(model), strings.ToLower(cameraMake)) {
 			gear = model
 		} else {
-			gear = make_ + " " + model
+			gear = cameraMake + " " + model
 		}
 	} else if model != "" {
 		gear = model

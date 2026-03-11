@@ -10,37 +10,7 @@ package detect
 #include <IOKit/storage/IOMedia.h>
 #include <CoreFoundation/CoreFoundation.h>
 
-// getDeviceInfo queries IOKit for additional device information.
-// Note: USB card readers do not expose SD card CID register.
-// We can only get USB mass storage device info, not raw SD card info.
-static int64_t getDeviceSize(const char* bsdName) {
-    io_iterator_t iterator;
-    mach_port_t masterPort;
-    IOMasterPort(MACH_PORT_NULL, &masterPort);
-    
-    CFMutableDictionaryRef matching = IOBSDNameMatching(masterPort, 0, bsdName);
-    if (!matching) return -1;
-    
-    kern_return_t kr = IOServiceGetMatchingServices(masterPort, matching, &iterator);
-    if (kr != KERN_SUCCESS) return -1;
-    
-    io_object_t service;
-    int64_t size = -1;
-    
-    while ((service = IOIteratorNext(iterator))) {
-        CFNumberRef sizeNum = (CFNumberRef)IORegistryEntryCreateCFProperty(
-            service, CFSTR(kIOMediaSizeKey), kCFAllocatorDefault, 0);
-        if (sizeNum) {
-            CFNumberGetValue(sizeNum, kCFNumberSInt64Type, &size);
-            CFRelease(sizeNum);
-        }
-        IOObjectRelease(service);
-        break;
-    }
-    
-    IOObjectRelease(iterator);
-    return size;
-}
+
 */
 import "C"
 import (
@@ -128,11 +98,10 @@ func GetHardwareInfo(mountPath string) (*HardwareInfo, error) {
 }
 
 type diskUtilInfo struct {
-	TotalSize   int64
-	Removable   bool
-	Protocol    string
-	VolumeUUID  string
-	DeviceBlockSize int64
+	TotalSize  int64
+	Removable  bool
+	Protocol   string
+	VolumeUUID string
 }
 
 func getDeviceID(mountPath string) (string, error) {
@@ -196,14 +165,6 @@ func getDiskUtilInfo(deviceID string) (*diskUtilInfo, error) {
 	matches = re.FindStringSubmatch(output)
 	if len(matches) >= 2 {
 		info.Protocol = strings.TrimSpace(matches[1])
-	}
-
-	// Parse Device Block Size
-	re = regexp.MustCompile(`Device Block Size:\s*(\d+)\s*Bytes`)
-	matches = re.FindStringSubmatch(output)
-	if len(matches) >= 2 {
-		bs, _ := strconv.ParseInt(matches[1], 10, 64)
-		info.DeviceBlockSize = bs
 	}
 
 	// Get volume UUID from child device
