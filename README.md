@@ -121,9 +121,12 @@ See [docs/CARDS.md](docs/CARDS.md) for full testing checklist.
 - [ ] Logging
 
 ### 0.1.4 — UI Polish
+- [ ] Merge brand + camera lines
+- [ ] Clean up repetitive brand names ("Nikon NIKON Z 9" → "Nikon Z 9")
 - [ ] Brand colors (Nikon yellow, Canon red, etc.)
 - [ ] Handle "no DCIM" warning
 - [ ] Handle read-only cards
+- [ ] File collision logic (skip, rename, overwrite)
 - [ ] 50k+ file performance
 
 ### 0.1.5 — Copy
