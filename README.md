@@ -1,18 +1,16 @@
 # CardBot
 
-A CLI tool for camera memory card ingestion. Detects cards, analyzes contents, and copies files with verification.
+A CLI tool for camera memory card ingestion.
 
 ## What It Does
 
-CardBot watches for memory card insertions, shows you what's on the card (photos, videos, dates, star ratings), and copies files to your computer with progress tracking and verification.
+CardBot gives you a quick overview and copy tools for ingesting your photography and video files in a simple and safe manner.
 
 **Current capabilities:**
-- Auto-detect SD cards, CFexpress, XQD on macOS and Linux
-- Display card info: brand, model, storage used, camera model
-- Group files by shooting date
-- Show photo/video counts and star ratings
-- Read hardware info (device size vs filesystem, CID on Linux)
+- Detect CFexpress, XQD and SD cards on macOS and Linux
+- Display card overview
 - Queue multiple cards
+- Cancel to escape
 - Eject cards cleanly
 
 ## Platform Support
