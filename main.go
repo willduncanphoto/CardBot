@@ -21,6 +21,9 @@ const (
 	removalDelay = 2 * time.Second // Pause after card removal so message is visible
 )
 
+// ts returns the current timestamp formatted for log output.
+func ts() string { return ts() }
+
 type app struct {
 	detector    *detect.Detector
 	currentCard *detect.Card
@@ -29,8 +32,8 @@ type app struct {
 }
 
 func main() {
-	fmt.Printf("[%s] Starting CardBot %s...\n", time.Now().Format("2006-01-02 15:04:05"), version)
-	fmt.Printf("[%s] Scanning for memory cards...", time.Now().Format("2006-01-02 15:04:05"))
+	fmt.Printf("[%s] Starting CardBot %s...\n", ts(), version)
+	fmt.Printf("[%s] Scanning for memory cards...", ts())
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -107,7 +110,7 @@ func (a *app) printQueueNotice(card *detect.Card) {
 		plural = "s"
 	}
 	fmt.Printf("\n[%s] %s detected (%d card%s in queue)\n",
-		time.Now().Format("2006-01-02 15:04:05"),
+		ts(),
 		card.Brand,
 		len(a.cardQueue),
 		plural)
@@ -118,11 +121,11 @@ func (a *app) displayCard(card *detect.Card) {
 		return // Card was cancelled or removed while starting
 	}
 
-	fmt.Printf("[%s] Scanning %s... ", time.Now().Format("2006-01-02 15:04:05"), card.Path)
+	fmt.Printf("[%s] Scanning %s... ", ts(), card.Path)
 	scanStart := time.Now()
 	analyzer := analyze.New(card.Path)
 	analyzer.OnProgress(func(count int) {
-		fmt.Printf("\r[%s] Scanning %s... %d files", time.Now().Format("2006-01-02 15:04:05"), card.Path, count)
+		fmt.Printf("\r[%s] Scanning %s... %d files", ts(), card.Path, count)
 	})
 
 	result, err := analyzer.Analyze()
@@ -139,12 +142,12 @@ func (a *app) displayCard(card *detect.Card) {
 	if result != nil {
 		total = result.FileCount
 	}
-	fmt.Printf("\r[%s] Scanning %s... %d files ✓\n", time.Now().Format("2006-01-02 15:04:05"), card.Path, total)
+	fmt.Printf("\r[%s] Scanning %s... %d files ✓\n", ts(), card.Path, total)
 	secWord := "seconds"
 	if secs == 1 {
 		secWord = "second"
 	}
-	fmt.Printf("[%s] Scan completed in %d %s\n", time.Now().Format("2006-01-02 15:04:05"), secs, secWord)
+	fmt.Printf("[%s] Scan completed in %d %s\n", ts(), secs, secWord)
 	fmt.Println()
 	a.printCardInfo(card, result)
 }
@@ -233,7 +236,7 @@ func (a *app) finishCard() {
 	}
 	a.mu.Unlock()
 
-	fmt.Printf("\n[%s] Scanning for memory cards...", time.Now().Format("2006-01-02 15:04:05"))
+	fmt.Printf("\n[%s] Scanning for memory cards...", ts())
 }
 
 func (a *app) handleRemoval(path string) {
@@ -251,12 +254,12 @@ func (a *app) handleRemoval(path string) {
 		}
 		a.mu.Unlock()
 
-		fmt.Printf("\n[%s] Card removed: %s\n", time.Now().Format("2006-01-02 15:04:05"), path)
+		fmt.Printf("\n[%s] Card removed: %s\n", ts(), path)
 		if hasQueue {
 			go a.displayCard(nextCard)
 		} else {
 			time.Sleep(removalDelay)
-			fmt.Printf("\n[%s] Scanning for memory cards...", time.Now().Format("2006-01-02 15:04:05"))
+			fmt.Printf("\n[%s] Scanning for memory cards...", ts())
 		}
 		return
 	}
@@ -266,7 +269,7 @@ func (a *app) handleRemoval(path string) {
 		if card.Path == path {
 			a.cardQueue = append(a.cardQueue[:i], a.cardQueue[i+1:]...)
 			a.mu.Unlock()
-			fmt.Printf("\n[%s] Queued card removed: %s\n", time.Now().Format("2006-01-02 15:04:05"), path)
+			fmt.Printf("\n[%s] Queued card removed: %s\n", ts(), path)
 			return
 		}
 	}
@@ -299,7 +302,7 @@ func (a *app) ejectCard(card *detect.Card) {
 		return
 	}
 	a.detector.Remove(card.Path)
-	fmt.Printf("\n[%s] Card ejected: %s\n", time.Now().Format("2006-01-02 15:04:05"), card.Path)
+	fmt.Printf("\n[%s] Card ejected: %s\n", ts(), card.Path)
 	a.finishCard()
 }
 

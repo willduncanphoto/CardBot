@@ -166,20 +166,22 @@ func (d *Detector) scanVolumes() {
 		}
 	}
 
-	// Check for removed cards
+	// Check for removed cards — collect first, then process.
+	var removed []string
 	d.mu.Lock()
 	for path := range d.cards {
 		if !currentCards[path] {
+			removed = append(removed, path)
 			delete(d.cards, path)
-			d.mu.Unlock()
-			select {
-			case d.removals <- path:
-			default:
-			}
-			d.mu.Lock()
 		}
 	}
 	d.mu.Unlock()
+	for _, path := range removed {
+		select {
+		case d.removals <- path:
+		default:
+		}
+	}
 }
 
 func (d *Detector) processCard(path, name string) {

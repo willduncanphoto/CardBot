@@ -2,17 +2,6 @@
 
 package detect
 
-/*
-#cgo CFLAGS: -x objective-c
-#cgo LDFLAGS: -framework IOKit -framework CoreFoundation
-
-#include <IOKit/IOKitLib.h>
-#include <IOKit/storage/IOMedia.h>
-#include <CoreFoundation/CoreFoundation.h>
-
-
-*/
-import "C"
 import (
 	"fmt"
 	"os/exec"
@@ -22,12 +11,21 @@ import (
 	"syscall"
 )
 
+// Pre-compiled regexes for diskutil output parsing.
+var (
+	reDeviceID   = regexp.MustCompile(`Device Identifier:\s*(\S+)`)
+	reDiskSize   = regexp.MustCompile(`Disk Size:\s*[\d.]+\s*\w+\s*\((\d+)\s*Bytes\)`)
+	reRemovable  = regexp.MustCompile(`Removable Media:\s*(\w+)`)
+	reProtocol   = regexp.MustCompile(`Protocol:\s*(.+)`)
+	reVolumeUUID = regexp.MustCompile(`Volume UUID:\s*(\S+)`)
+	reParentDisk = regexp.MustCompile(`^(disk\d+)s\d+$`)
+)
+
 // HardwareInfo contains device-level information about the card/reader.
-// Note: On macOS with USB readers, this is limited to USB mass storage data.
-// The SD card CID register (manufacturer ID, serial number, etc.) is not
-// accessible through USB. Linux with direct SD slot access can read CID.
+// On macOS, CID (Card Identification register) is not accessible through
+// USB card readers. See hardware_linux.go for CID support.
 type HardwareInfo struct {
-	// Device size from IOKit (may differ from filesystem size due to partitioning/formatting)
+	// Device size from diskutil (may differ from filesystem size due to partitioning/formatting)
 	DeviceBytes int64
 
 	// Filesystem size (what Statfs reports)
@@ -47,28 +45,12 @@ type HardwareInfo struct {
 
 	// Protocol (USB, SD Card, etc.)
 	Protocol string
-
-	// Whether we could read CID (only true on Linux with direct SD slot)
-	CIDAvailable bool
-
-	// Raw CID hex string (Linux only, when CIDAvailable is true)
-	CIDHex string
-
-	// Parsed CID fields (Linux only)
-	ManufacturerID   byte   // MID
-	OEMID            string // OID
-	ProductName      string // PNM
-	ProductRevision  byte   // PRV
-	ProductSerial    uint32 // PSN
-	ManufacturingDate string // MDT
 }
 
 // GetHardwareInfo attempts to retrieve hardware information for the given mount path.
 // On macOS with USB readers, this returns limited info (no CID access).
 func GetHardwareInfo(mountPath string) (*HardwareInfo, error) {
-	info := &HardwareInfo{
-		CIDAvailable: false, // USB readers don't expose CID
-	}
+	info := &HardwareInfo{}
 
 	// Get filesystem stats
 	var stat syscall.Statfs_t
@@ -105,16 +87,13 @@ type diskUtilInfo struct {
 }
 
 func getDeviceID(mountPath string) (string, error) {
-	// Use diskutil to find the device identifier
 	cmd := exec.Command("diskutil", "info", mountPath)
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
 	}
 
-	// Parse "Device Identifier: disk4s1"
-	re := regexp.MustCompile(`Device Identifier:\s*(\S+)`)
-	matches := re.FindStringSubmatch(string(out))
+	matches := reDeviceID.FindStringSubmatch(string(out))
 	if len(matches) >= 2 {
 		return matches[1], nil
 	}
@@ -125,11 +104,8 @@ func getDeviceID(mountPath string) (string, error) {
 func getDiskUtilInfo(deviceID string) (*diskUtilInfo, error) {
 	// Get parent disk (e.g., disk4s1 -> disk4)
 	parentDisk := deviceID
-	if strings.Contains(deviceID, "s") {
-		parts := strings.Split(deviceID, "s")
-		if len(parts) >= 2 {
-			parentDisk = parts[0]
-		}
+	if m := reParentDisk.FindStringSubmatch(deviceID); len(m) >= 2 {
+		parentDisk = m[1]
 	}
 
 	// Query the physical disk for size info
@@ -142,40 +118,24 @@ func getDiskUtilInfo(deviceID string) (*diskUtilInfo, error) {
 	info := &diskUtilInfo{}
 	output := string(out)
 
-	// Parse Total Size
-	// Disk Size: 512.1 GB (512110190592 Bytes)
-	re := regexp.MustCompile(`Disk Size:\s*[\d.]+\s*\w+\s*\((\d+)\s*Bytes\)`)
-	matches := re.FindStringSubmatch(output)
-	if len(matches) >= 2 {
-		size, _ := strconv.ParseInt(matches[1], 10, 64)
+	if m := reDiskSize.FindStringSubmatch(output); len(m) >= 2 {
+		size, _ := strconv.ParseInt(m[1], 10, 64)
 		info.TotalSize = size
 	}
 
-	// Parse Removable
-	if strings.Contains(output, "Removable Media:") {
-		re = regexp.MustCompile(`Removable Media:\s*(\w+)`)
-		matches = re.FindStringSubmatch(output)
-		if len(matches) >= 2 {
-			info.Removable = matches[1] == "Yes" || matches[1] == "Removable"
-		}
+	if m := reRemovable.FindStringSubmatch(output); len(m) >= 2 {
+		info.Removable = m[1] == "Yes" || m[1] == "Removable"
 	}
 
-	// Parse Protocol
-	re = regexp.MustCompile(`Protocol:\s*(.+)`)
-	matches = re.FindStringSubmatch(output)
-	if len(matches) >= 2 {
-		info.Protocol = strings.TrimSpace(matches[1])
+	if m := reProtocol.FindStringSubmatch(output); len(m) >= 2 {
+		info.Protocol = strings.TrimSpace(m[1])
 	}
 
-	// Get volume UUID from child device
+	// Get volume UUID from the partition device
 	cmd = exec.Command("diskutil", "info", deviceID)
 	out, _ = cmd.Output()
-	volumeOutput := string(out)
-
-	re = regexp.MustCompile(`Volume UUID:\s*(\S+)`)
-	matches = re.FindStringSubmatch(volumeOutput)
-	if len(matches) >= 2 {
-		info.VolumeUUID = matches[1]
+	if m := reVolumeUUID.FindStringSubmatch(string(out)); len(m) >= 2 {
+		info.VolumeUUID = m[1]
 	}
 
 	return info, nil
@@ -211,17 +171,7 @@ func FormatHardwareInfo(info *HardwareInfo) string {
 		parts = append(parts, fmt.Sprintf("UUID: %s", info.VolumeUUID))
 	}
 
-	if info.CIDAvailable {
-		parts = append(parts, "CID: Available")
-		parts = append(parts, fmt.Sprintf("Manufacturer: 0x%02X", info.ManufacturerID))
-		parts = append(parts, fmt.Sprintf("OEM: %s", info.OEMID))
-		parts = append(parts, fmt.Sprintf("Product: %s", info.ProductName))
-		parts = append(parts, fmt.Sprintf("Revision: %d.%d", info.ProductRevision>>4, info.ProductRevision&0x0F))
-		parts = append(parts, fmt.Sprintf("Serial: 0x%08X", info.ProductSerial))
-		parts = append(parts, fmt.Sprintf("Mfg Date: %s", info.ManufacturingDate))
-	} else {
-		parts = append(parts, "CID: Not available (USB reader)")
-	}
+	parts = append(parts, "CID: Not available (USB reader)")
 
 	return strings.Join(parts, "\n  ")
 }
