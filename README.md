@@ -2,6 +2,13 @@
 
 A CLI tool for camera memory cards.
 
+## DISCLAIMER: CardBot was Built with AI Coding Tools
+
+CardBot was built with the help of human guided AI coding models and many many many open source projects and years of professional experience. There is no way in hell I could do this alone. A special thanks goes out to **[Pi](https://shittycodingagent.ai)** — a terminal-based coding agent. I hated AI until I picked up Pi.
+
+- Website: [shittycodingagent.ai](https://shittycodingagent.ai)
+- GitHub: [github.com/badlogic/pi-mono](https://github.com/badlogic/pi-mono)
+
 ## What CardBot Does
 
 CardBot generates a concise overview of your memory card and provides modern copy tools. It will also rename your files one day.
@@ -17,7 +24,6 @@ CardBot generates a concise overview of your memory card and provides modern cop
 - Track copy history via `.cardbot` dotfile written to the card
 - Queue multiple cards
 - Eject cards safely
-- Help command with full key reference
 - Doesn't delete your hard work
 
 ## Platform Support
