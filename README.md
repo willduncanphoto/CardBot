@@ -217,7 +217,6 @@ cardbot/
 
 - **Runtime:** Zero external runtime dependencies
 - **Build:** `github.com/evanoberholster/imagemeta` for EXIF/XMP parsing
-- **Build:** `github.com/chzyer/readline` for Linux path completion fallback
 - **Optional:** Xcode CLI Tools for macOS native card detection
 
 ## Size

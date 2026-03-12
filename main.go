@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/chzyer/readline"
 	"github.com/illwill/cardbot/internal/analyze"
 	"github.com/illwill/cardbot/internal/config"
 	"github.com/illwill/cardbot/internal/detect"
@@ -220,71 +219,16 @@ func promptDestination(defaultPath string) string {
 	return promptDestinationReadline(expanded)
 }
 
-// promptDestinationReadline is the fallback path prompt with tab completion.
+// promptDestinationReadline is the fallback path prompt using stdlib.
 func promptDestinationReadline(defaultPath string) string {
-	rl, err := readline.NewEx(&readline.Config{
-		Prompt:       "Destination: ",
-		HistoryLimit: 0,
-		AutoComplete: readline.NewPrefixCompleter(readline.PcItemDynamic(pathCompleter)),
-	})
-	if err != nil {
-		fmt.Printf("Destination [%s]: ", defaultPath)
-		reader := bufio.NewReader(os.Stdin)
-		line, _ := reader.ReadString('\n')
-		line = strings.TrimSpace(line)
-		if line == "" {
-			return defaultPath
-		}
-		return line
-	}
-	defer rl.Close()
-
-	rl.WriteStdin([]byte(defaultPath))
-	line, err := rl.Readline()
-	if err != nil {
-		return defaultPath
-	}
+	fmt.Printf("Destination [%s]: ", defaultPath)
+	reader := bufio.NewReader(os.Stdin)
+	line, _ := reader.ReadString('\n')
 	line = strings.TrimSpace(line)
 	if line == "" {
 		return defaultPath
 	}
 	return line
-}
-
-// pathCompleter returns directory completions for readline tab completion.
-func pathCompleter(prefix string) []string {
-	expanded, err := config.ExpandPath(prefix)
-	if err != nil {
-		expanded = prefix
-	}
-
-	var dir, partial string
-	if strings.HasSuffix(expanded, "/") {
-		dir = expanded
-		partial = ""
-	} else {
-		dir = expanded[:strings.LastIndex(expanded, "/")+1]
-		partial = expanded[strings.LastIndex(expanded, "/")+1:]
-	}
-	if dir == "" {
-		dir = "."
-	}
-
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil
-	}
-
-	var completions []string
-	for _, e := range entries {
-		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
-			continue
-		}
-		if strings.HasPrefix(e.Name(), partial) {
-			completions = append(completions, dir+e.Name()+"/")
-		}
-	}
-	return completions
 }
 
 func (a *app) handleCardEvent(card *detect.Card) {
