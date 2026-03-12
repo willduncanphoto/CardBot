@@ -40,55 +40,63 @@ Work items grouped by milestone.
 - [x] CID parsing on Linux with direct SD slot
 - [x] `[i]` key for hardware info (hidden command)
 
+### 0.1.3 — Config & Destination
+- [x] Config file: `~/.config/cardbot/config.json`
+- [x] First-run setup — prompt for destination
+- [x] Store: default destination path
+- [x] CLI flags: `--dest`, `--version`, `--dry-run`, `--setup`, `--reset`
+- [x] Logging: `~/.cardbot/cardbot.log` (5MB rotation)
+
+### 0.1.4 — UI Polish
+- [x] Merge brand + camera into single `Camera:` line
+- [x] Clean brand names ("NIKON Z 9" → "Nikon Z 9")
+- [x] Brand colors (ANSI): Nikon yellow, Canon red, Sony white, etc.
+- [x] Card status line (New / Copied via `.cardbot` dotfile)
+- [x] Parallel EXIF workers (4 default, 3.7x faster)
+- [x] Progress callback throttled to every 100 files
+- [x] Config save skipped when destination unchanged
+- [x] Native macOS folder picker via `osascript`
+- [x] `~` shorthand for paths (display and storage)
+- [x] `[t]` hidden speed test command
+
+### 0.1.5 — Copy (Current)
+- [x] `[a] Copy All` mode
+- [x] Dated folders: `YYYY-MM-DD/<original-structure>`
+- [x] Buffered copy with configurable buffer size
+- [x] Progress updates every 2 seconds
+- [x] Size verification after each file
+- [x] `.cardbot` dotfile written on success
+- [x] "Copied on" status on re-insert
+- [x] Destination write probe on first creation
+- [x] Dry-run aware
+
 ---
 
 ## Upcoming
 
-### 0.1.3 — Config & Destination (Current)
-- [x] Config file: `~/.config/cardbot/config.json`
-- [x] First-run setup — prompt for destination
-- [x] Store: default destination path
-- [x] CLI flags: `--dest`, `--version`
-- [x] `--dry-run` mode
-- [x] Logging: `~/.cardbot/cardbot.log` (5MB rotation)
-
-### 0.1.4 — UI Polish
-- [ ] Merge brand + camera lines
-- [ ] Clean up repetitive brand names ("Nikon NIKON Z 9" → "Nikon Z 9")
-- [ ] Brand colors (ANSI)
-- [ ] Handle "no DCIM" case
-- [ ] Handle read-only cards
-- [ ] File collision logic (skip, rename, overwrite)
-- [ ] Better error messages
-- [ ] Performance: handle 50k+ files
-
-### 0.1.5 — Copy
-- [ ] `[a] All` copy mode
-- [ ] Dated folders: `CardBot_YYMMDD_001/`
-- [ ] Progress updates every 5 seconds
-- [ ] Cancel copy with cleanup
+### 0.1.6 — Copy Robustness
 - [ ] Handle card removed during copy
 - [ ] Handle destination disk full
-- [ ] Handle corrupt files
-- [ ] Size verification
-- [ ] `.cardbot` dotfile
-- [ ] "Processed" status on re-insert
-- [ ] `[⌥T]` Toggle: flat vs preserve DCIM
-- [ ] `[v]` Videos only, `[p]` Photos only
-- [ ] Estimated time remaining
+- [ ] Cancel copy in progress (with cleanup)
+- [ ] File collision logic (skip existing)
+- [ ] Handle "no DCIM" case with warning
+- [ ] Handle read-only cards (warn before copy)
+- [ ] Output mutex for concurrent progress/scan output
+- [ ] Cancel in-flight scan on card removal
+- [ ] Better error messages
 
-### 0.1.6 — Linux
+### 0.1.7 — Linux
 - [ ] Test on Ubuntu, Fedora, Debian
 - [ ] Document mount point behavior
 - [ ] Linux build marked stable
 
-### 0.1.7 — Polish
+### 0.1.8 — Polish
 - [ ] Startup <100ms
 - [ ] Single-key input (raw terminal mode)
-- [ ] Config validation
+- [ ] Estimated time remaining during copy
 - [ ] Performance benchmarks
 
-### 0.1.8 — Distribution
+### 0.1.9 — Distribution
 - [ ] README with install/usage
 - [ ] GitHub releases (macOS Intel/ARM, Linux AMD64/ARM64)
 - [ ] Homebrew formula
@@ -101,9 +109,11 @@ Work items grouped by milestone.
 
 - Windows support
 - `[s] Selects` copy mode (starred only)
-- Incremental copy
+- `[v] Videos` / `[p] Photos` copy modes
+- Incremental copy (only new/changed files)
 - Resume interrupted copies
 - Video metadata (duration, resolution)
 - Network destinations
 - TOML/YAML config
 - JSON output mode
+- Toggle flat vs preserve DCIM structure

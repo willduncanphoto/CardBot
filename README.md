@@ -4,12 +4,14 @@ A CLI tool for camera memory card ingestion.
 
 ## What It Does
 
-CardBot watches for memory card insertion, analyzes the contents, and helps you copy your work safely. It's designed for photographers and videographers who want a fast, no-nonsense ingest workflow from the terminal.
+CardBot watches for memory card insertion, analyzes the contents, and copies your work safely. It's designed for photographers and videographers who want a fast, no-nonsense ingest workflow from the terminal.
 
 **Current capabilities:**
 - Detect CFexpress, XQD, and SD cards on macOS and Linux
 - Analyze card contents — files grouped by date with sizes and types
 - Extract camera model and star ratings from EXIF/XMP
+- Copy all files to dated folders with size verification
+- Track copy history via `.cardbot` dotfile on the card
 - Queue multiple cards
 - Eject cards cleanly
 - First-run setup with native macOS folder picker
@@ -63,28 +65,30 @@ Run CardBot and insert a memory card:
 **Output example:**
 
 ```
-[2026-03-11 19:30:14] Starting CardBot 0.1.4...
-[2026-03-11 19:30:14] Scanning for memory cards...card found.
-[2026-03-11 19:30:15] Scanning /Volumes/NIKON Z 9  ... 3048 files ✓
-[2026-03-11 19:30:15] Scan completed in 1 second
+[2026-03-11 21:15:32] Starting CardBot 0.1.5...
+[2026-03-11 21:15:32] Copy location is set to ~/Pictures/CardBot
+[2026-03-11 21:15:32] Scanning for memory cards...card found.
+[2026-03-11 21:15:33] Scanning /Volumes/NIKON Z 9  ... 3051 files ✓
+[2026-03-11 21:15:33] Scan completed in 0 seconds
 
+  Status:   New
   Path:     /Volumes/NIKON Z 9  
   Storage:  96.4 GB / 476.9 GB (20%)
-  Brand:    Nikon
-  Camera:   NIKON Z 9
+  Camera:   Nikon Z 9
   Starred:  1
   Content:  2026-02-27      12.9 GB    418   NEF
             2026-02-26      28.4 MB      1   NEF
 
   Total:    3048 photos, 0 videos, 96.0 GB
 ────────────────────────────────────────
-[e] Eject  [c] Cancel  > 
+[a] Copy All  [e] Eject  [c] Cancel  >
 ```
 
 ### Commands
 
 | Key | Action |
 |-----|--------|
+| `a` + Enter | Copy all files to destination |
 | `e` + Enter | Eject the card |
 | `c` + Enter | Cancel / dismiss |
 
@@ -97,6 +101,26 @@ Run CardBot and insert a memory card:
 | `--setup` | Re-run destination setup |
 | `--reset` | Clear saved config |
 | `--version` | Print version and exit |
+
+## Copy
+
+Press `a` to copy all files. CardBot groups files into dated folders based on EXIF date:
+
+```
+~/Pictures/CardBot/
+├── 2026-02-26/
+│   └── 100NIKON/
+│       └── DSC_0001.NEF
+├── 2026-02-27/
+│   └── 100NIKON/
+│       ├── DSC_0002.NEF
+│       └── DSC_0003.JPG
+└── 2026-03-08/
+    └── 101NIKON/
+        └── DSC_0200.MOV
+```
+
+After a successful copy, CardBot writes a `.cardbot` file to the card. On re-insert, the card shows `Status: Copied on 2026-03-11 21:31` instead of `Status: New`.
 
 ## Supported Cameras
 
@@ -147,35 +171,27 @@ Run `cardbot --setup` to change the destination. Run `cardbot --reset` to clear 
 
 ## Roadmap
 
-### ✅ 0.1.0 – 0.1.3 — Detection, Analysis, Config
+### ✅ 0.1.0 – 0.1.5 — Detection, Analysis, Config, Copy
 - Native macOS card detection (DiskArbitration)
 - DCIM walking, date grouping, file type breakdown
-- EXIF camera model, XMP star ratings
+- EXIF camera model, XMP star ratings, parallel EXIF workers
 - Hardware info (macOS via IOKit/system_profiler, Linux via sysfs/CID)
 - Config file with first-run setup and native folder picker
-- Logging with 5MB rotation
-- Card queue for multiple cards
+- Brand name cleanup and ANSI colors
+- Copy all files with dated folders, size verification, dotfile tracking
 
-### 🔧 0.1.4 — UI Polish (In Progress)
-- Merge brand + camera lines
-- Clean up repetitive brand names
-- Brand colors (ANSI)
-- Handle edge cases: no DCIM, read-only cards, file collisions
+### 🔧 0.1.6 — Copy Robustness (Next)
+- Handle card removal during copy, disk full, cancel with cleanup
+- File collision handling, read-only card warnings
 
-### 📋 0.1.5 — Copy
-- `[a] All` copy mode with dated folders (`CardBot_YYMMDD_001/`)
-- Progress updates, cancel with cleanup
-- Size verification
-- `.cardbot` dotfile to track processed cards
-
-### 📋 0.1.6 — Linux
+### 📋 0.1.7 — Linux
 - Verified testing on Ubuntu, Fedora, Debian
 
-### 📋 0.1.7 — Polish
+### 📋 0.1.8 — Polish
 - Single-key input (no Enter required)
-- Startup under 100ms
+- Startup under 100ms, ETA during copy
 
-### 📋 0.1.8 — Distribution
+### 📋 0.1.9 — Distribution
 - GitHub releases (macOS Intel/ARM, Linux AMD64/ARM64)
 - Homebrew formula
 
@@ -185,13 +201,15 @@ Run `cardbot --setup` to change the destination. Run `cardbot --reset` to clear 
 
 ```
 cardbot/
-├── main.go                          # CLI, event loop, display, input
+├── main.go                          # CLI, event loop, display, input, copy orchestration
 ├── internal/
 │   ├── analyze/
-│   │   ├── analyze.go               # DCIM walking, EXIF/XMP parsing, date grouping
+│   │   ├── analyze.go               # DCIM walking, parallel EXIF/XMP, date grouping
 │   │   └── analyze_test.go          # Unit tests
 │   ├── config/
 │   │   └── config.go                # Config load/save, schema versioning, path expansion
+│   ├── copy/
+│   │   └── copy.go                  # File copy engine — walk, copy, verify
 │   ├── detect/
 │   │   ├── card.go                  # Card struct
 │   │   ├── shared.go                # Brand detection, FormatBytes
@@ -201,14 +219,18 @@ cardbot/
 │   │   ├── detect_other.go          # Unsupported platforms stub
 │   │   ├── hardware_darwin.go       # macOS hardware info (IOKit, system_profiler)
 │   │   └── hardware_linux.go        # Linux hardware info (sysfs, CID)
+│   ├── dotfile/
+│   │   └── dotfile.go               # .cardbot read/write for copy tracking
 │   ├── log/
 │   │   └── log.go                   # File logging with rotation
 │   ├── pick/
 │   │   ├── pick_darwin.go           # Native macOS folder picker (osascript)
 │   │   └── pick_other.go            # Fallback stub
-│   └── speedtest/
-│       ├── speedtest_darwin.go      # 256MB sequential read/write benchmark
-│       └── speedtest_other.go       # Stub for unsupported platforms
+│   ├── speedtest/
+│   │   ├── speedtest_darwin.go      # 256MB sequential read/write benchmark
+│   │   └── speedtest_other.go       # Stub for unsupported platforms
+│   └── ui/
+│       └── color.go                 # ANSI brand colors
 ├── docs/                            # Project documentation
 └── go.mod
 ```
@@ -222,11 +244,11 @@ cardbot/
 ## Size
 
 - Binary: ~5.1 MB
-- Source: ~3,100 lines of Go across 17 files
+- Source: ~3,600 lines of Go across 20 files
 
 ## License
 
-TBD — will be added before public release (0.1.8)
+TBD — will be added before public release (0.1.9)
 
 ## Built With AI
 
