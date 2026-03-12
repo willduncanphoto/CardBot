@@ -2,10 +2,13 @@ package main
 
 import (
 	"bufio"
+	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -22,7 +25,7 @@ import (
 	"github.com/illwill/cardbot/internal/ui"
 )
 
-const version = "0.1.5"
+const version = "0.1.6"
 
 // UX delays — remove in 0.4.0 when real startup and analysis timings replace them.
 const (
@@ -35,16 +38,17 @@ func ts() string {
 }
 
 type app struct {
-	detector     *detect.Detector
-	currentCard  *detect.Card
-	lastResult   *analyze.Result // analysis result for currentCard
-	cardQueue    []*detect.Card
-	mu           sync.Mutex
-	cfg          *config.Config
-	logger       *cblog.Logger
-	inputChan    chan string // buffered input from stdin
-	dryRun       bool
-	copied       bool // true after successful copy of current card
+	detector    *detect.Detector
+	currentCard *detect.Card
+	lastResult  *analyze.Result // analysis result for currentCard
+	cardQueue   []*detect.Card
+	mu          sync.Mutex
+	printMu     sync.Mutex // serialises concurrent stdout writes during copy
+	cfg         *config.Config
+	logger      *cblog.Logger
+	inputChan   chan string // buffered input from stdin
+	dryRun      bool
+	copied      bool // true after successful copy of current card
 }
 
 // drainInput discards any buffered input keystrokes.
@@ -570,14 +574,23 @@ func (a *app) copyAll(card *detect.Card) {
 		return
 	}
 
+	// Warn if the card is write-protected — dotfile won't be written after copy.
+	if cardIsReadOnly(card.Path) {
+		fmt.Printf("\n[%s] Warning: card appears to be write-protected — copy status will not be saved to card\n", ts())
+		a.logf("Card %s appears write-protected", card.Path)
+	}
+
 	fmt.Printf("\n[%s] Copying all files to %s\n", ts(), a.cfg.Destination.Path)
+	fmt.Printf("[%s] Press [q] to cancel\n", ts())
 	a.logf("Copy starting: %s → %s", card.Path, destBase)
 
 	a.mu.Lock()
 	analyzeResult := a.lastResult
 	a.mu.Unlock()
 
-	lastUpdate := time.Now()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	opts := cardcopy.Options{
 		CardPath:      card.Path,
 		DestBase:      destBase,
@@ -585,75 +598,156 @@ func (a *app) copyAll(card *detect.Card) {
 		AnalyzeResult: analyzeResult,
 	}
 
-	result, err := cardcopy.Run(opts, func(p cardcopy.Progress) {
-		now := time.Now()
-		if now.Sub(lastUpdate) < 2*time.Second && p.FilesDone < p.FilesTotal {
+	type copyOutcome struct {
+		result *cardcopy.Result
+		err    error
+	}
+	doneCh := make(chan copyOutcome, 1)
+
+	lastUpdate := time.Now()
+	go func() {
+		r, err := cardcopy.Run(ctx, opts, func(p cardcopy.Progress) {
+			now := time.Now()
+			if now.Sub(lastUpdate) < 2*time.Second && p.FilesDone < p.FilesTotal {
+				return
+			}
+			lastUpdate = now
+			pct := int64(0)
+			if p.BytesTotal > 0 {
+				pct = (p.BytesDone * 100) / p.BytesTotal
+			}
+			a.printMu.Lock()
+			fmt.Printf("\r[%s] Copying... %d/%d files  %s/%s (%d%%)    ",
+				ts(),
+				p.FilesDone, p.FilesTotal,
+				detect.FormatBytes(p.BytesDone),
+				detect.FormatBytes(p.BytesTotal),
+				pct)
+			a.printMu.Unlock()
+		})
+		doneCh <- copyOutcome{r, err}
+	}()
+
+	var cardRemovedDuringCopy bool
+
+	for {
+		select {
+		case outcome := <-doneCh:
+			result, copyErr := outcome.result, outcome.err
+
+			if errors.Is(copyErr, context.Canceled) {
+				if cardRemovedDuringCopy {
+					a.printMu.Lock()
+					fmt.Printf("\n[%s] Copy stopped — card removed. %d files copied.\n",
+						ts(), result.FilesCopied)
+					a.printMu.Unlock()
+					a.logf("Copy stopped: card removed. %d files copied.", result.FilesCopied)
+					a.finishCard()
+				} else {
+					a.printMu.Lock()
+					fmt.Printf("\n[%s] Copy cancelled — %d files copied.\n",
+						ts(), result.FilesCopied)
+					a.printMu.Unlock()
+					a.logf("Copy cancelled. %d files copied.", result.FilesCopied)
+					a.drainInput()
+					a.printPrompt()
+				}
+				return
+			}
+
+			if copyErr != nil {
+				a.printMu.Lock()
+				fmt.Printf("\n[%s] Copy failed: %v\n", ts(), copyErr)
+				if result != nil && result.FilesCopied > 0 {
+					fmt.Printf("[%s] %d files copied before failure.\n", ts(), result.FilesCopied)
+				}
+				a.printMu.Unlock()
+				a.logf("Copy failed: %v", copyErr)
+				a.drainInput()
+				a.printPrompt()
+				return
+			}
+
+			// --- Success ---
+			elapsed := result.Elapsed.Round(time.Second)
+			speed := float64(0)
+			if result.Elapsed.Seconds() > 0 {
+				speed = float64(result.BytesCopied) / result.Elapsed.Seconds() / (1024 * 1024)
+			}
+			a.printMu.Lock()
+			fmt.Printf("\r[%s] Copy complete ✓                                          \n", ts())
+			fmt.Printf("[%s] %d files, %s copied in %s (%.1f MB/s)\n",
+				ts(),
+				result.FilesCopied,
+				detect.FormatBytes(result.BytesCopied),
+				elapsed,
+				speed)
+			a.printMu.Unlock()
+			a.logf("Copy complete: %d files, %s in %s (%.1f MB/s)",
+				result.FilesCopied,
+				detect.FormatBytes(result.BytesCopied),
+				elapsed,
+				speed)
+
+			dotErr := dotfile.Write(dotfile.WriteOptions{
+				CardPath:       card.Path,
+				Destination:    destBase,
+				Mode:           "all",
+				FilesCopied:    result.FilesCopied,
+				BytesCopied:    result.BytesCopied,
+				Verified:       true,
+				CardbotVersion: version,
+			})
+			if dotErr != nil {
+				fmt.Printf("[%s] Warning: could not write .cardbot to card: %v\n", ts(), dotErr)
+				a.logf("Dotfile write failed: %v", dotErr)
+			} else {
+				a.logf("Dotfile written to %s", card.Path)
+			}
+
+			a.mu.Lock()
+			a.copied = true
+			a.mu.Unlock()
+
+			fmt.Println()
+			a.drainInput()
+			fmt.Print("[e] Eject  [c] Done  > ")
 			return
-		}
-		lastUpdate = now
 
-		pct := int64(0)
-		if p.BytesTotal > 0 {
-			pct = (p.BytesDone * 100) / p.BytesTotal
-		}
-		fmt.Printf("\r[%s] Copying... %d/%d files  %s/%s (%d%%)    ",
-			ts(),
-			p.FilesDone, p.FilesTotal,
-			detect.FormatBytes(p.BytesDone),
-			detect.FormatBytes(p.BytesTotal),
-			pct)
-	})
+		case path := <-a.detector.Removals():
+			if path == card.Path {
+				// Current card pulled — cancel the copy and wait for doneCh.
+				cardRemovedDuringCopy = true
+				cancel()
+			} else {
+				// A queued card was removed; delegate to the normal handler.
+				a.handleRemoval(path)
+			}
 
+		case newCard := <-a.detector.Events():
+			// Queue any cards inserted while copying.
+			a.handleCardEvent(newCard)
+
+		case input := <-a.inputChan:
+			if strings.ToLower(input) == "q" {
+				cancel()
+			}
+			// All other input is silently ignored during copy.
+		}
+	}
+}
+
+// cardIsReadOnly probes the card path for write access.
+// Returns true if a temp file cannot be created (write-protected card).
+func cardIsReadOnly(path string) bool {
+	probe := filepath.Join(path, ".cardbot_rw")
+	f, err := os.OpenFile(probe, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		fmt.Printf("\n[%s] Copy failed: %v\n", ts(), err)
-		a.logf("Copy failed: %v", err)
-		a.printPrompt()
-		return
+		return true
 	}
-
-	elapsed := result.Elapsed.Round(time.Second)
-	speed := float64(0)
-	if result.Elapsed.Seconds() > 0 {
-		speed = float64(result.BytesCopied) / result.Elapsed.Seconds() / (1024 * 1024)
-	}
-
-	fmt.Printf("\r[%s] Copy complete ✓                                          \n", ts())
-	fmt.Printf("[%s] %d files, %s copied in %s (%.1f MB/s)\n",
-		ts(),
-		result.FilesCopied,
-		detect.FormatBytes(result.BytesCopied),
-		elapsed,
-		speed)
-	a.logf("Copy complete: %d files, %s in %s (%.1f MB/s)",
-		result.FilesCopied,
-		detect.FormatBytes(result.BytesCopied),
-		elapsed,
-		speed)
-
-	// Write .cardbot dotfile to card
-	dotErr := dotfile.Write(dotfile.WriteOptions{
-		CardPath:       card.Path,
-		Destination:    destBase,
-		Mode:           "all",
-		FilesCopied:    result.FilesCopied,
-		BytesCopied:    result.BytesCopied,
-		Verified:       true,
-		CardbotVersion: version,
-	})
-	if dotErr != nil {
-		fmt.Printf("[%s] Warning: could not write .cardbot to card: %v\n", ts(), dotErr)
-		a.logf("Dotfile write failed: %v", dotErr)
-	} else {
-		a.logf("Dotfile written to %s", card.Path)
-	}
-
-	a.mu.Lock()
-	a.copied = true
-	a.mu.Unlock()
-
-	fmt.Println()
-	a.drainInput()
-	fmt.Print("[e] Eject  [c] Done  > ")
+	f.Close()
+	os.Remove(probe)
+	return false
 }
 
 func (a *app) showHardwareInfo(card *detect.Card) {

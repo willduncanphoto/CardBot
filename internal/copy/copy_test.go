@@ -1,6 +1,8 @@
 package copy
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -45,7 +47,7 @@ func TestCopy_BasicFiles(t *testing.T) {
 	})
 	dest := t.TempDir()
 
-	result, err := Run(Options{CardPath: card, DestBase: dest}, nil)
+	result, err := Run(context.Background(), Options{CardPath: card, DestBase: dest}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +71,7 @@ func TestCopy_SkipsHiddenFiles(t *testing.T) {
 	})
 	dest := t.TempDir()
 
-	result, err := Run(Options{CardPath: card, DestBase: dest}, nil)
+	result, err := Run(context.Background(), Options{CardPath: card, DestBase: dest}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +93,7 @@ func TestCopy_SkipsHiddenDirs(t *testing.T) {
 	})
 	dest := t.TempDir()
 
-	result, err := Run(Options{CardPath: card, DestBase: dest}, nil)
+	result, err := Run(context.Background(), Options{CardPath: card, DestBase: dest}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +108,7 @@ func TestCopy_EmptyCard(t *testing.T) {
 	os.MkdirAll(filepath.Join(root, "DCIM"), 0755)
 	dest := t.TempDir()
 
-	result, err := Run(Options{CardPath: root, DestBase: dest}, nil)
+	result, err := Run(context.Background(), Options{CardPath: root, DestBase: dest}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +122,7 @@ func TestCopy_NoDCIM(t *testing.T) {
 	root := t.TempDir()
 	dest := t.TempDir()
 
-	_, err := Run(Options{CardPath: root, DestBase: dest}, nil)
+	_, err := Run(context.Background(), Options{CardPath: root, DestBase: dest}, nil)
 	if err == nil {
 		t.Error("expected error for missing DCIM")
 	}
@@ -132,7 +134,7 @@ func TestCopy_DryRun(t *testing.T) {
 	})
 	dest := t.TempDir()
 
-	result, err := Run(Options{CardPath: card, DestBase: dest, DryRun: true}, nil)
+	result, err := Run(context.Background(), Options{CardPath: card, DestBase: dest, DryRun: true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +157,7 @@ func TestCopy_DryRun_NoDirCreation(t *testing.T) {
 	// Destination that doesn't exist yet — dry-run should NOT create it.
 	dest := filepath.Join(t.TempDir(), "nonexistent", "deep", "path")
 
-	result, err := Run(Options{CardPath: card, DestBase: dest, DryRun: true}, nil)
+	result, err := Run(context.Background(), Options{CardPath: card, DestBase: dest, DryRun: true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +178,7 @@ func TestCopy_ContentVerification(t *testing.T) {
 	})
 	dest := t.TempDir()
 
-	_, err := Run(Options{CardPath: card, DestBase: dest}, nil)
+	_, err := Run(context.Background(), Options{CardPath: card, DestBase: dest}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,7 +200,7 @@ func TestCopy_Progress(t *testing.T) {
 	dest := t.TempDir()
 
 	var calls []Progress
-	_, err := Run(Options{CardPath: card, DestBase: dest}, func(p Progress) {
+	_, err := Run(context.Background(), Options{CardPath: card, DestBase: dest}, func(p Progress) {
 		calls = append(calls, p)
 	})
 	if err != nil {
@@ -222,7 +224,7 @@ func TestCopy_CreatesNestedDest(t *testing.T) {
 	})
 	dest := filepath.Join(t.TempDir(), "nested", "deep", "dest")
 
-	_, err := Run(Options{CardPath: card, DestBase: dest}, nil)
+	_, err := Run(context.Background(), Options{CardPath: card, DestBase: dest}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +240,7 @@ func TestCopy_MultipleSubfolders(t *testing.T) {
 	})
 	dest := t.TempDir()
 
-	result, err := Run(Options{CardPath: card, DestBase: dest}, nil)
+	result, err := Run(context.Background(), Options{CardPath: card, DestBase: dest}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +261,7 @@ func TestCopy_DefaultBufferSize(t *testing.T) {
 	dest := t.TempDir()
 
 	// BufferKB=0 should default to 256.
-	result, err := Run(Options{CardPath: card, DestBase: dest, BufferKB: 0}, nil)
+	result, err := Run(context.Background(), Options{CardPath: card, DestBase: dest, BufferKB: 0}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +277,7 @@ func TestCopy_ExifDatesOverrideMtime(t *testing.T) {
 	})
 	dest := t.TempDir()
 
-	result, err := Run(Options{
+	result, err := Run(context.Background(), Options{
 		CardPath: card,
 		DestBase: dest,
 		AnalyzeResult: &analyze.Result{
@@ -309,7 +311,7 @@ func TestCopy_ExifDatePartialOverride(t *testing.T) {
 	dest := t.TempDir()
 
 	// Only the NEF has an EXIF date; the MOV falls back to mtime.
-	result, err := Run(Options{
+	result, err := Run(context.Background(), Options{
 		CardPath: card,
 		DestBase: dest,
 		AnalyzeResult: &analyze.Result{
@@ -336,7 +338,7 @@ func TestCopy_ElapsedTime(t *testing.T) {
 	})
 	dest := t.TempDir()
 
-	result, err := Run(Options{CardPath: card, DestBase: dest}, nil)
+	result, err := Run(context.Background(), Options{CardPath: card, DestBase: dest}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,7 +356,7 @@ func TestCopy_SkipsExistingWithCorrectSize(t *testing.T) {
 	dest := t.TempDir()
 
 	// First copy.
-	result1, err := Run(Options{CardPath: card, DestBase: dest}, nil)
+	result1, err := Run(context.Background(), Options{CardPath: card, DestBase: dest}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -371,7 +373,7 @@ func TestCopy_SkipsExistingWithCorrectSize(t *testing.T) {
 	os.WriteFile(destFile, tampered, 0644)
 
 	// Second copy — file should be skipped because size matches.
-	result2, err := Run(Options{CardPath: card, DestBase: dest}, nil)
+	result2, err := Run(context.Background(), Options{CardPath: card, DestBase: dest}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -398,3 +400,62 @@ func assertFileSize(t *testing.T, path string, wantSize int64) {
 		t.Errorf("file %s size = %d, want %d", path, info.Size(), wantSize)
 	}
 }
+
+func TestCopy_CancelBeforeCopy(t *testing.T) {
+	card := createTestCard(t, map[string]testFileSpec{
+		"100NIKON/DSC_0001.NEF": {data: make([]byte, 1000), mtime: date(2026, 3, 8)},
+		"100NIKON/DSC_0002.NEF": {data: make([]byte, 2000), mtime: date(2026, 3, 8)},
+		"100NIKON/DSC_0003.NEF": {data: make([]byte, 3000), mtime: date(2026, 3, 8)},
+	})
+	dest := t.TempDir()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately before any files are copied
+
+	result, err := Run(ctx, Options{CardPath: card, DestBase: dest}, nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected partial result even on cancel")
+	}
+	if result.FilesCopied != 0 {
+		t.Errorf("FilesCopied = %d, want 0 (cancelled before start)", result.FilesCopied)
+	}
+}
+
+func TestCopy_CancelMidCopy(t *testing.T) {
+	card := createTestCard(t, map[string]testFileSpec{
+		"100NIKON/DSC_0001.NEF": {data: make([]byte, 1000), mtime: date(2026, 3, 8)},
+		"100NIKON/DSC_0002.NEF": {data: make([]byte, 2000), mtime: date(2026, 3, 8)},
+		"100NIKON/DSC_0003.NEF": {data: make([]byte, 3000), mtime: date(2026, 3, 8)},
+	})
+	dest := t.TempDir()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	copied := 0
+	result, err := Run(ctx, Options{CardPath: card, DestBase: dest}, func(p Progress) {
+		// Cancel after the first file completes.
+		if p.FilesDone == 1 && copied == 0 {
+			copied = p.FilesDone
+			cancel()
+		}
+	})
+
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected partial result even on cancel")
+	}
+	// At least one file completed before cancel.
+	if result.FilesCopied < 1 {
+		t.Errorf("FilesCopied = %d, want >= 1", result.FilesCopied)
+	}
+	// Did not copy all files.
+	if result.FilesCopied == 3 {
+		t.Error("expected copy to be interrupted, but all 3 files were copied")
+	}
+}
+

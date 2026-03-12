@@ -2,6 +2,7 @@
 package copy
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -25,6 +26,8 @@ type Progress struct {
 }
 
 // Result holds the final outcome of a copy operation.
+// On a cancelled or failed copy, FilesCopied/BytesCopied reflect files that
+// completed successfully before the interruption.
 type Result struct {
 	FilesCopied int
 	BytesCopied int64
@@ -34,10 +37,10 @@ type Result struct {
 
 // Options configures the copy operation.
 type Options struct {
-	CardPath    string           // Source card mount point
-	DestBase    string           // Base destination directory (e.g. ~/Pictures/CardBot)
-	BufferKB    int              // Copy buffer size in KB (default 256)
-	DryRun      bool             // If true, walk and report but don't copy
+	CardPath      string          // Source card mount point
+	DestBase      string          // Base destination directory (e.g. ~/Pictures/CardBot)
+	BufferKB      int             // Copy buffer size in KB (default 256)
+	DryRun        bool            // If true, walk and report but don't copy
 	AnalyzeResult *analyze.Result // If provided, use EXIF dates for folder grouping
 }
 
@@ -50,9 +53,9 @@ type fileEntry struct {
 }
 
 // Run executes the copy operation.
-// It walks DCIM, groups files by date into destination folders,
-// copies with buffered I/O, verifies sizes, and returns a summary.
-func Run(opts Options, onProgress ProgressFunc) (*Result, error) {
+// ctx may be cancelled to abort mid-copy; a partial *Result is always returned
+// alongside any error so the caller knows how many files completed.
+func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, error) {
 	if opts.BufferKB <= 0 {
 		opts.BufferKB = 256
 	}
@@ -139,24 +142,43 @@ func Run(opts Options, onProgress ProgressFunc) (*Result, error) {
 		}
 	}
 
+	// --- Disk space check ---
+	// If we can query free space and it's clearly insufficient, fail fast.
+	// Note: files already at the destination will be skipped during copy,
+	// so this check may be conservative for re-copies.
+	if free, ok := diskFreeBytes(opts.DestBase); ok && free < totalBytes {
+		return nil, fmt.Errorf("not enough space on destination: need %s, only %s free",
+			fmtBytes(totalBytes), fmtBytes(free))
+	}
+
 	// --- Phase 2: Copy ---
 	buf := make([]byte, opts.BufferKB*1024)
 	var bytesDone int64
+	var filesDone int
 	start := time.Now()
 	madeDir := make(map[string]bool, 32)
 
 	for i := range files {
+		// Check for cancellation before each file.
+		select {
+		case <-ctx.Done():
+			return partialResult(filesDone, bytesDone, start, opts.DestBase), ctx.Err()
+		default:
+		}
+
 		f := &files[i]
 		destPath := filepath.Join(opts.DestBase, f.date, f.relPath)
+
 		// Guard against path traversal via malicious card paths.
 		destPath = filepath.Clean(destPath)
 		if !strings.HasPrefix(destPath, filepath.Clean(opts.DestBase)+string(filepath.Separator)) {
-			return nil, fmt.Errorf("refusing to write outside destination: %s", destPath)
+			return partialResult(filesDone, bytesDone, start, opts.DestBase),
+				fmt.Errorf("refusing to write outside destination: %s", destPath)
 		}
 
 		if onProgress != nil {
 			onProgress(Progress{
-				FilesDone:   i,
+				FilesDone:   filesDone,
 				FilesTotal:  len(files),
 				BytesDone:   bytesDone,
 				BytesTotal:  totalBytes,
@@ -165,16 +187,18 @@ func Run(opts Options, onProgress ProgressFunc) (*Result, error) {
 		}
 
 		if err := copyFile(destPath, f.srcPath, f.size, buf, madeDir); err != nil {
-			return nil, fmt.Errorf("copying %s: %w", f.relPath, err)
+			return partialResult(filesDone, bytesDone, start, opts.DestBase),
+				fmt.Errorf("copying %s: %w", f.relPath, err)
 		}
 
 		bytesDone += f.size
+		filesDone++
 	}
 
 	// Final progress
 	if onProgress != nil {
 		onProgress(Progress{
-			FilesDone:  len(files),
+			FilesDone:  filesDone,
 			FilesTotal: len(files),
 			BytesDone:  bytesDone,
 			BytesTotal: totalBytes,
@@ -182,11 +206,21 @@ func Run(opts Options, onProgress ProgressFunc) (*Result, error) {
 	}
 
 	return &Result{
-		FilesCopied: len(files),
+		FilesCopied: filesDone,
 		BytesCopied: bytesDone,
 		Elapsed:     time.Since(start),
 		DestPath:    opts.DestBase,
 	}, nil
+}
+
+// partialResult builds a Result from in-progress counters.
+func partialResult(files int, bytes int64, start time.Time, dest string) *Result {
+	return &Result{
+		FilesCopied: files,
+		BytesCopied: bytes,
+		Elapsed:     time.Since(start),
+		DestPath:    dest,
+	}
 }
 
 // copyFile copies a single file with size verification.
@@ -233,4 +267,19 @@ func copyFile(dst, src string, srcSize int64, buf []byte, madeDir map[string]boo
 	}
 
 	return err
+}
+
+// fmtBytes formats a byte count as a human-readable string (e.g. "12.3 GB").
+// Kept local to avoid a dependency on the detect package.
+func fmtBytes(b int64) string {
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
 }
