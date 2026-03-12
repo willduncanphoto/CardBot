@@ -85,12 +85,7 @@ Work items grouped by milestone.
 - [ ] Cancel in-flight scan on card removal
 - [ ] Better error messages
 
-### 0.1.7 — Linux
-- [ ] Test on Ubuntu, Fedora, Debian
-- [ ] Document mount point behavior
-- [ ] Linux build marked stable
-
-### 0.1.8 — Polish
+### 0.1.7 — Polish
 - [ ] Startup <100ms
 - [ ] Single-key input (raw terminal mode)
 - [ ] Estimated time remaining during copy
@@ -101,6 +96,7 @@ Work items grouped by milestone.
 ## Later
 
 - Windows support
+- Linux testing (Ubuntu, Fedora, Debian), mount point docs, stable build
 - File renaming on copy (date-based, camera+date, sequence numbering)
 - `[s] Selects` copy mode (starred only)
 - `[v] Videos` / `[p] Photos` copy modes
