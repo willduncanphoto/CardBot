@@ -40,11 +40,10 @@ type Options struct {
 
 // fileEntry holds a file to be copied with its resolved destination.
 type fileEntry struct {
-	srcPath  string // absolute source path on card
-	relPath  string // relative path from DCIM (e.g. "100NIKON/DSC_0001.NEF")
-	destPath string // absolute destination path
-	size     int64
-	date     string // YYYY-MM-DD for folder grouping
+	srcPath string // absolute source path on card
+	relPath string // relative path from DCIM (e.g. "100NIKON/DSC_0001.NEF")
+	size    int64
+	date    string // YYYY-MM-DD for folder grouping
 }
 
 // Run executes the copy operation.
@@ -118,12 +117,6 @@ func Run(opts Options, onProgress ProgressFunc) (*Result, error) {
 		return &Result{DestPath: opts.DestBase}, nil
 	}
 
-	// --- Phase 2: Resolve destination paths ---
-	// Group into dated folders: <DestBase>/YYYY-MM-DD/<original-structure>
-	for i := range files {
-		files[i].destPath = filepath.Join(opts.DestBase, files[i].date, files[i].relPath)
-	}
-
 	if opts.DryRun {
 		return &Result{
 			FilesCopied: len(files),
@@ -136,9 +129,11 @@ func Run(opts Options, onProgress ProgressFunc) (*Result, error) {
 	buf := make([]byte, opts.BufferKB*1024)
 	var bytesDone int64
 	start := time.Now()
+	madeDir := make(map[string]bool, 32) // cache of already-created directories
 
 	for i := range files {
 		f := &files[i]
+		destPath := filepath.Join(opts.DestBase, f.date, f.relPath)
 
 		if onProgress != nil {
 			onProgress(Progress{
@@ -150,18 +145,8 @@ func Run(opts Options, onProgress ProgressFunc) (*Result, error) {
 			})
 		}
 
-		if err := copyFile(f.srcPath, f.destPath, buf); err != nil {
+		if err := copyFile(destPath, f.srcPath, f.size, buf, madeDir); err != nil {
 			return nil, fmt.Errorf("copying %s: %w", f.relPath, err)
-		}
-
-		// Size verification
-		destInfo, err := os.Stat(f.destPath)
-		if err != nil {
-			return nil, fmt.Errorf("verifying %s: %w", f.relPath, err)
-		}
-		if destInfo.Size() != f.size {
-			return nil, fmt.Errorf("size mismatch for %s: source %d, dest %d",
-				f.relPath, f.size, destInfo.Size())
 		}
 
 		bytesDone += f.size
@@ -185,10 +170,15 @@ func Run(opts Options, onProgress ProgressFunc) (*Result, error) {
 	}, nil
 }
 
-// copyFile copies a single file, creating parent directories as needed.
-func copyFile(src, dst string, buf []byte) error {
-	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
-		return err
+// copyFile copies a single file with size verification.
+// madeDir caches directories already created to avoid redundant MkdirAll syscalls.
+func copyFile(dst, src string, srcSize int64, buf []byte, madeDir map[string]bool) error {
+	dir := filepath.Dir(dst)
+	if !madeDir[dir] {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+		madeDir[dir] = true
 	}
 
 	sf, err := os.Open(src)
@@ -202,7 +192,7 @@ func copyFile(src, dst string, buf []byte) error {
 		return err
 	}
 
-	_, err = io.CopyBuffer(df, sf, buf)
+	n, err := io.CopyBuffer(df, sf, buf)
 	if closeErr := df.Close(); err == nil {
 		err = closeErr
 	}
@@ -210,6 +200,11 @@ func copyFile(src, dst string, buf []byte) error {
 	if err != nil {
 		os.Remove(dst) // Clean up partial file
 		return err
+	}
+
+	if n != srcSize {
+		os.Remove(dst)
+		return fmt.Errorf("size mismatch: wrote %d, expected %d", n, srcSize)
 	}
 
 	return nil

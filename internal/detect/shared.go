@@ -12,6 +12,8 @@ import (
 
 // buildCard constructs a Card from a mount path and volume name.
 // Returns nil if filesystem stats cannot be read.
+// Hardware info is fetched in a background goroutine to avoid blocking card detection;
+// it will be available by the time the user presses [i].
 func buildCard(path, name string) *Card {
 	var stat syscall.Statfs_t
 	if err := syscall.Statfs(path, &stat); err != nil {
@@ -22,17 +24,22 @@ func buildCard(path, name string) *Card {
 	free := int64(stat.Bavail) * int64(stat.Bsize)
 	used := total - free
 
-	// Get hardware info (may fail silently on some systems/readers)
-	hardware, _ := GetHardwareInfo(path)
-
-	return &Card{
+	card := &Card{
 		Path:       path,
 		Name:       name,
 		TotalBytes: total,
 		UsedBytes:  used,
 		Brand:      detectBrand(path),
-		Hardware:   hardware,
 	}
+
+	// Fetch hardware info asynchronously — shells out to diskutil + system_profiler.
+	go func() {
+		if hw, err := GetHardwareInfo(path); err == nil {
+			card.Hardware = hw
+		}
+	}()
+
+	return card
 }
 
 // detectBrand identifies camera brand from DCIM subfolder naming patterns.

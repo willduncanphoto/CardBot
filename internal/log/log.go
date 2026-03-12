@@ -13,9 +13,10 @@ const maxSize = 5 * 1024 * 1024 // 5 MB
 
 // Logger writes log lines to a file, rotating when it exceeds maxSize.
 type Logger struct {
-	mu   sync.Mutex
-	path string
-	f    *os.File
+	mu      sync.Mutex
+	path    string
+	f       *os.File
+	written int64 // bytes written since open, avoids Stat() on every line
 }
 
 // Open opens (or creates) the log file at path.
@@ -27,7 +28,12 @@ func Open(path string) (*Logger, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opening log file: %w", err)
 	}
-	return &Logger{path: path, f: f}, nil
+	// Seed written from current file size so rotation works on restart.
+	var written int64
+	if info, err := f.Stat(); err == nil {
+		written = info.Size()
+	}
+	return &Logger{path: path, f: f, written: written}, nil
 }
 
 // Printf writes a formatted log line with a timestamp prefix.
@@ -39,12 +45,12 @@ func (l *Logger) Printf(format string, args ...any) {
 		time.Now().Format("2006-01-02 15:04:05"),
 		fmt.Sprintf(format, args...))
 
-	// Rotate if needed before writing.
-	if info, err := l.f.Stat(); err == nil && info.Size() >= maxSize {
+	if l.written >= maxSize {
 		l.rotate()
 	}
 
-	_, _ = l.f.WriteString(line)
+	n, _ := l.f.WriteString(line)
+	l.written += int64(n)
 }
 
 // Close flushes and closes the log file.
@@ -67,4 +73,5 @@ func (l *Logger) rotate() {
 		return
 	}
 	l.f = f
+	l.written = 0
 }

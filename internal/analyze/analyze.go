@@ -138,7 +138,6 @@ type fileEntry struct {
 
 // exifResult holds the output from a single EXIF worker.
 type exifResult struct {
-	path   string
 	date   time.Time
 	gear   string
 	rating int
@@ -214,7 +213,6 @@ func (a *Analyzer) Analyze() (*Result, error) {
 				f := &files[idx]
 				date, gear, rating, ok := readExif(f.path, xmpBuf)
 				exifResults[idx] = exifResult{
-					path:   f.path,
 					date:   date,
 					gear:   gear,
 					rating: rating,
@@ -228,13 +226,10 @@ func (a *Analyzer) Analyze() (*Result, error) {
 		}()
 	}
 
-	// Count non-EXIF files for progress tracking.
-	var nonExifCount int64
+	// Send EXIF-eligible files to workers; non-EXIF files need no processing.
 	for i := range files {
 		if supportedExif[files[i].ext] {
 			exifFiles <- i
-		} else {
-			nonExifCount++
 		}
 	}
 	close(exifFiles)

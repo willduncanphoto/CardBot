@@ -78,21 +78,17 @@ func Load(path string) (*Config, []string, error) {
 		return cfg, nil, fmt.Errorf("reading config: %w", err)
 	}
 
-	// Parse into a raw map to check schema first.
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(data, &raw); err != nil {
+	// Parse schema field first to verify compatibility, then unmarshal into config.
+	// Use a single json.Unmarshal into a struct that embeds both to avoid parsing twice.
+	var probe struct {
+		Schema string `json:"$schema"`
+	}
+	if err := json.Unmarshal(data, &probe); err != nil {
 		return cfg, []string{"config file is malformed JSON, using defaults"}, nil
 	}
-
-	// Check schema version.
-	if schemaRaw, ok := raw["$schema"]; ok {
-		var schema string
-		if err := json.Unmarshal(schemaRaw, &schema); err == nil {
-			if schema != schemaVersion {
-				warnings = append(warnings, fmt.Sprintf("unknown config schema %q, using defaults", schema))
-				return cfg, warnings, nil
-			}
-		}
+	if probe.Schema != "" && probe.Schema != schemaVersion {
+		warnings = append(warnings, fmt.Sprintf("unknown config schema %q, using defaults", probe.Schema))
+		return cfg, warnings, nil
 	}
 
 	// Unmarshal into config (merges over defaults since cfg already has them).
