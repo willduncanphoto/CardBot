@@ -118,3 +118,7 @@ Work items grouped by milestone.
 - TOML/YAML config
 - JSON output mode
 - Toggle flat vs preserve DCIM structure
+- Auto-update: check GitHub Releases for new version at startup, `--update` flag to self-upgrade
+  - Prereqs: GoReleaser for multi-platform builds, checksums, `-ldflags` version injection
+  - Consider `go-selfupdate` library or DIY (~200 lines for single binary)
+  - UX: non-blocking check once/day, notify user, don't force
