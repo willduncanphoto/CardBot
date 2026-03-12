@@ -4,7 +4,7 @@ A CLI tool for camera memory cards.
 
 ## What CardBot Does
 
-CardBot generate a concise overview of your memory card and provides modern copy tools to your files are safe and fast. It will also rename your files one day.
+CardBot generate a concise overview of your memory card and provides modern copy tools. It will also rename your files one day.
 
 **Current capabilities:**
 - Detect CFexpress, XQD, and SD cards on macOS and Linux
