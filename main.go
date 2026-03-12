@@ -464,7 +464,7 @@ func (a *app) printCardInfo(card *detect.Card, result *analyze.Result) {
 	}
 
 	fmt.Println("────────────────────────────────────────")
-	fmt.Print("[a] Copy All  [e] Eject  [c] Cancel  > ")
+	a.printPrompt()
 }
 
 func (a *app) finishCard() {
@@ -536,14 +536,8 @@ func (a *app) handleInput(input string) {
 		a.showHelp()
 		a.mu.Lock()
 		hasCard := a.currentCard != nil
-		invalid := a.cardInvalid
 		a.mu.Unlock()
-		if !hasCard {
-			return
-		}
-		if invalid {
-			a.printInvalidPrompt()
-		} else {
+		if hasCard {
 			a.printPrompt()
 		}
 		return
@@ -568,11 +562,12 @@ func (a *app) handleInput(input string) {
 		a.mu.Unlock()
 		if invalid {
 			fmt.Printf("\n[%s] No media found on this card.\n", ts())
-			a.printInvalidPrompt()
+			a.printPrompt()
 			return
 		}
 		if alreadyCopied {
-			fmt.Printf("\n[%s] Already copied. [e] Eject  [c] Done  > ", ts())
+			fmt.Printf("\n[%s] Already copied.\n", ts())
+			a.printPrompt()
 			return
 		}
 		a.copyAll(card)
@@ -587,14 +582,7 @@ func (a *app) handleInput(input string) {
 	default:
 		if input != "" {
 			fmt.Printf("\nUnknown command %q. Press [?] for help.\n", input)
-			a.mu.Lock()
-			invalid := a.cardInvalid
-			a.mu.Unlock()
-			if invalid {
-				a.printInvalidPrompt()
-			} else {
-				a.printPrompt()
-			}
+			a.printPrompt()
 		}
 	}
 }
@@ -771,7 +759,7 @@ func (a *app) copyAll(card *detect.Card) {
 
 			fmt.Println()
 			a.drainInput()
-			fmt.Print("[e] Eject  [c] Done  > ")
+			a.printPrompt()
 			return
 
 		case path := <-a.detector.Removals():
@@ -862,11 +850,19 @@ func (a *app) runSpeedTest(card *detect.Card) {
 }
 
 func (a *app) printPrompt() {
-	fmt.Print("[a] Copy All  [e] Eject  [c] Cancel  [?]  > ")
-}
+	a.mu.Lock()
+	invalid := a.cardInvalid
+	copied := a.copied
+	a.mu.Unlock()
 
-func (a *app) printInvalidPrompt() {
-	fmt.Print("[e] Eject  [c] Cancel  [?]  > ")
+	switch {
+	case invalid:
+		fmt.Print("[e] Eject  [c] Cancel  [?]  > ")
+	case copied:
+		fmt.Print("[e] Eject  [c] Done  [?]  > ")
+	default:
+		fmt.Print("[a] Copy All  [e] Eject  [c] Cancel  [?]  > ")
+	}
 }
 
 // printInvalidCardInfo shows basic card info when a card has no DCIM directory.
@@ -891,7 +887,7 @@ func (a *app) printInvalidCardInfo(card *detect.Card) {
 	fmt.Printf("  Camera:   %s%s%s\n", color, card.Brand, reset)
 	fmt.Printf("  Content:  (no DCIM — not a camera card)\n")
 	fmt.Println("────────────────────────────────────────")
-	a.printInvalidPrompt()
+	a.printPrompt()
 }
 
 // showHelp prints all available commands.
