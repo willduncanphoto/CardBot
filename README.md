@@ -93,10 +93,14 @@ Run CardBot and insert a memory card:
 
 | Key | Action |
 |-----|--------|
-| `a` | Copy all files to destination |
+| `a` | Copy All — copy all files to destination |
+| `s` | Copy Selects — starred/picked files only *(coming in 0.1.8)* |
+| `p` | Copy Photos — photos only *(coming in 0.1.8)* |
+| `v` | Copy Videos — videos only *(coming in 0.1.8)* |
 | `e` | Eject the card |
 | `x` | Exit — skip this card, move to next |
-| `?` | Help - Show all commands |
+| `\` | Cancel Copy — cancel the copy in progress |
+| `?` | Help — show all commands |
 
 Press `?` for the full command list, including hidden commands.
 
@@ -104,14 +108,16 @@ Press `?` for the full command list, including hidden commands.
 
 ```
   Commands:
-  [a]  Copy All     copy all files to destination
-  [s]  Copy Selects  copy starred/picked files only  (coming soon)
-  [e]  Eject        safely eject this card
-  [x]  Exit         skip this card, move to next
-  [i]  Card Info    show hardware details
-  [t]  Speed Test   benchmark read/write speed
-  [\]  (during copy) cancel the copy in progress
-  [?]  Help         show this help
+  [a]  Copy All       copy all files to destination
+  [s]  Copy Selects   copy starred/picked files only    (coming in 0.1.8)
+  [p]  Copy Photos    copy photos only                  (coming in 0.1.8)
+  [v]  Copy Videos    copy videos only                  (coming in 0.1.8)
+  [e]  Eject          safely eject this card
+  [x]  Exit           skip this card, move to next
+  [i]  Card Info      show hardware details
+  [t]  Speed Test     benchmark read/write speed
+  [\]  Cancel Copy    cancel the copy in progress
+  [?]  Help           show this help
 ```
 
 ### CLI Flags

@@ -11,16 +11,33 @@ Detection, analysis, EXIF, config, UI polish, copy with robustness, and UX impro
 - [ ] Single-key input (raw terminal mode, no Enter required)
 - [ ] Startup under 100ms
 - [ ] Estimated time remaining during copy
-- [ ] Copy Selects mode (`[s]` — starred files only)
 - [ ] Show current filename during copy (deferred to renaming milestone)
+
+---
+
+## 0.1.8 — Selective Copy
+
+- [ ] `[s]` Copy Selects — copy starred/picked files only (XMP rating > 0)
+- [ ] `[p]` Copy Photos — copy photo files only (RAW + JPEG, no video)
+- [ ] `[v]` Copy Videos — copy video files only (MOV, MP4, MXF, etc.)
+- [ ] Dotfile tracks copy mode per operation (`"mode": "selects"`)
+- [ ] Status line reflects partial copy (`Selects copied on ...`)
+- [ ] Re-copy guard per mode — don't skip if previous copy was a different mode
+- [ ] Disk space preflight scoped to selected file subset
+- [ ] Help removes strikethrough from `[s]`, `[p]`, `[v]` once implemented
 
 ---
 
 ## Code Cleanup
 
-- [ ] Split `main.go` (~900 lines) — extract display/prompt/UI logic into separate package
-- [ ] Drop `app.printf()` method — use explicit `fmt.Printf` + `a.logf` instead
-- [ ] Review `OUTPUT.md` aspirational features vs reality — trim or mark as future
+- [ ] Split `main.go` (~941 lines) — extract display/prompt, copy orchestration, app logic
+- [ ] Drop `app.printf()` — use explicit `fmt.Printf` + `a.logf` pairs
+- [ ] Add `context.Context` to `displayCard` and analyzer for clean cancellation
+- [ ] Move `FormatBytes` to unguarded file (currently darwin/linux only via build tag)
+- [ ] Extract `printCardHeader` helper — shared between `printCardInfo` and `printInvalidCardInfo`
+- [ ] Remove startup `time.Sleep` calls (3 × 150ms) — conflicts with 0.1.7 startup goal
+- [ ] Add `df.Sync()` before close in `copyFile` — correctness on Linux removable media
+- [ ] Standardize error handling — `friendlyErr` everywhere user-facing, raw `%v` log only
 
 ---
 
@@ -55,3 +72,4 @@ Current implementation is a synthetic 256MB sequential read/write benchmark.
       drive folder grouping instead of mtime
 - [ ] **Dotfile round-trip** — copy card, re-insert, verify "Copied on" status displays
 - [ ] **Re-copy behavior** — copy same card twice, verify no file collisions or errors
+- [ ] **Selective copy** — copy selects, re-insert, verify status and re-copy guard

@@ -148,12 +148,14 @@ Queue is processed in insertion order. The queue count appears when additional c
 
 | Key | Action |
 |-----|--------|
-| `a` | Copy all files to destination |
-| `s` | Copy starred/picked files only (coming soon) |
+| `a` | Copy All — copy all files to destination |
+| `s` | Copy Selects — copy starred/picked files only *(coming in 0.1.8)* |
+| `p` | Copy Photos — copy photos only *(coming in 0.1.8)* |
+| `v` | Copy Videos — copy videos only *(coming in 0.1.8)* |
 | `e` | Eject the card |
 | `x` | Exit — skip this card, move to next |
-| `?` | Show help with all commands |
-| `\` | Cancel copy in progress |
+| `\` | Cancel Copy — cancel the copy in progress |
+| `?` | Help — show all commands |
 
 ### Hidden Commands
 

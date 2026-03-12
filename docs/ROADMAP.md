@@ -84,7 +84,7 @@ Work items grouped by milestone.
 - [x] Test suite: 81 tests across 6 packages
 
 ### 0.1.6 — Copy Robustness & UX
-- [x] Cancel during copy (`[\]` key)
+- [x] Cancel during copy (`[\] Cancel Copy` key)
 - [x] Card removal mid-copy — detected and handled gracefully
 - [x] Ctrl+C during copy — clean shutdown
 - [x] Disk space preflight check
@@ -97,7 +97,8 @@ Work items grouped by milestone.
 - [x] Help command (`[?]`) with full key reference
 - [x] Unknown input feedback
 - [x] Friendly error messages (disk full, permission denied, I/O errors)
-- [x] Key remapping: `x` = exit, `\` = cancel copy, `s` = selects stub
+- [x] Key remapping: `x` = Exit, `\` = Cancel Copy, stubs for `s`/`p`/`v`
+- [x] Copy Selects, Copy Photos, Copy Videos shown in help (strikethrough — coming soon)
 - [x] Test suite: 97 tests across 6 packages, all passing with `-race`
 
 ---
@@ -108,8 +109,15 @@ Work items grouped by milestone.
 - [ ] Single-key input (raw terminal mode, no Enter required)
 - [ ] Startup under 100ms
 - [ ] Estimated time remaining during copy
-- [ ] Copy Selects mode (starred files only)
 - [ ] Show current filename during copy (deferred to renaming milestone)
+
+### 0.1.8 — Selective Copy
+- [ ] `[s]` Copy Selects — copy starred/picked files only (XMP rating > 0)
+- [ ] `[p]` Copy Photos — copy photo files only (RAW + JPEG, no video)
+- [ ] `[v]` Copy Videos — copy video files only (MOV, MP4, MXF, etc.)
+- [ ] Dotfile tracks copy mode per operation (`"mode": "selects"`)
+- [ ] Status line reflects partial copy (`Selects copied on ...`)
+- [ ] Re-copy guard per mode (don't skip if previous copy was a different mode)
 
 ---
 
@@ -118,7 +126,6 @@ Work items grouped by milestone.
 - Windows support
 - Linux testing (Ubuntu, Fedora, Debian), mount point docs, stable build
 - File renaming on copy (date-based, camera+date, sequence numbering)
-- `[v] Videos` / `[p] Photos` copy modes
 - Incremental copy (only new/changed files)
 - Resume interrupted copies
 - Video metadata (duration, resolution)
