@@ -86,7 +86,7 @@ Run CardBot and insert a memory card:
 
   Total:    3048 photos, 0 videos, 96.0 GB
 ────────────────────────────────────────
-[a] Copy All  [e] Eject  [x] Exit  [?]  >
+[a] Copy All  [e] Eject  [x] Exit  [?] Help  >
 ```
 
 ### Commands
@@ -96,7 +96,7 @@ Run CardBot and insert a memory card:
 | `a` | Copy all files to destination |
 | `e` | Eject the card |
 | `x` | Exit — skip this card, move to next |
-| `?` | Show help with all commands |
+| `?` | Help - Show all commands |
 
 Press `?` for the full command list, including hidden commands.
 
