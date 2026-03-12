@@ -142,7 +142,7 @@ you hand to another photographer and say "try this."
 - [ ] Selective copy (`[s]`, `[p]`, `[v]`) fully implemented with correct status tracking
 - [ ] Partial copy state in dotfile — multi-mode copy history
 - [ ] No known crashes or data loss scenarios
-- [x] Tested on personal gear
+- [ ] Tested on personal gear across multiple shooting days
 - [ ] Feedback from at least one other photographer on real-world use
 - [ ] README reflects actual current behaviour (no aspirational features listed as present)
 - [ ] First public-facing release candidate
