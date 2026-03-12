@@ -166,7 +166,6 @@ func main() {
 	fmt.Println()
 	a.logf("Starting CardBot %s", version)
 	a.printf("[%s] Copy location is set to %s\n", ts(), cfg.Destination.Path)
-	fmt.Println()
 	time.Sleep(500 * time.Millisecond)
 
 	if a.dryRun {
