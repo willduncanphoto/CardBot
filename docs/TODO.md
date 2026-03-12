@@ -75,7 +75,11 @@ Down the line, beef this up with real-world tests:
 
 ---
 
-## Code Cleanup (before 0.1.5 Copy)
+## Testing Notes
+
+- [ ] **Destination path display** — verify `~` shorthand is shown correctly at startup
+      across all setup flows: first run, `--setup`, folder picker (full path returned by
+      osascript should be contracted to `~/...`), and manual text entry
 
 - [ ] Split `main.go` — extract display/prompt/UI logic into separate package
 - [ ] Drop `app.printf()` method — use explicit `fmt.Printf` + `a.logf` instead
