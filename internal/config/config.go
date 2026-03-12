@@ -148,3 +148,16 @@ func ExpandPath(path string) (string, error) {
 	}
 	return filepath.Join(home, path[1:]), nil
 }
+
+// ContractPath replaces the user's home directory prefix with ~.
+// Reverses ExpandPath for display and storage.
+func ContractPath(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	if strings.HasPrefix(path, home) {
+		return "~" + path[len(home):]
+	}
+	return path
+}

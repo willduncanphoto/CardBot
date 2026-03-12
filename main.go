@@ -117,7 +117,7 @@ func main() {
 		}
 	}
 	if needsSetup {
-		cfg.Destination.Path = promptDestination(cfg.Destination.Path)
+		cfg.Destination.Path = config.ContractPath(promptDestination(cfg.Destination.Path))
 		if cfgPath != "" {
 			if saveErr := config.Save(cfg, cfgPath); saveErr != nil {
 				fmt.Fprintf(os.Stderr, "Warning: could not save config: %v\n", saveErr)
@@ -126,7 +126,7 @@ func main() {
 		fmt.Println()
 	} else if *flagDest == "" {
 		// Destination already configured — confirm before scanning.
-		cfg.Destination.Path = confirmDestination(cfg.Destination.Path)
+		cfg.Destination.Path = config.ContractPath(confirmDestination(cfg.Destination.Path))
 		if cfgPath != "" {
 			if saveErr := config.Save(cfg, cfgPath); saveErr != nil {
 				fmt.Fprintf(os.Stderr, "Warning: could not save config: %v\n", saveErr)
@@ -165,12 +165,7 @@ func main() {
 	}
 
 	a.printf("[%s] Starting CardBot %s...\n", ts(), version)
-
-	destDisplay, err := config.ExpandPath(cfg.Destination.Path)
-	if err != nil {
-		destDisplay = cfg.Destination.Path
-	}
-	a.printf("[%s] Copy location is set to %s\n", ts(), destDisplay)
+	a.printf("[%s] Copy location is set to %s\n", ts(), cfg.Destination.Path)
 
 	if a.dryRun {
 		a.printf("[%s] Dry-run mode — no files will be copied\n", ts())
