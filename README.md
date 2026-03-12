@@ -2,21 +2,14 @@
 
 A CLI tool for camera memory card review and ingestion.
 
-## DISCLAIMER: Built with AI Coding Tools
-
-CardBot was built with the help of human guided AI coding models and many many many open source projects. There is no way in hell I could do this alone. A special thanks goes out to **[Pi](https://shittycodingagent.ai)** — a terminal-based coding agent.
-
-- Website: [shittycodingagent.ai](https://shittycodingagent.ai)
-- GitHub: [github.com/badlogic/pi-mono](https://github.com/badlogic/pi-mono)
-
 ## What CardBot Does
 
 CardBot scans the contents of your camera's memory cards to generate a concise overview of the cards contents and copy status. It will also rename your files one day.
 
 **Current capabilities:**
 - Detect CFexpress, XQD, and SD cards on macOS and Linux
-- Analyze card contents — files grouped by date with sizes and types
-- Extract camera model and star ratings from EXIF/XMP
+- Quickly analyze a cards contents with a content overview
+- Show starred image count from from EXIF/XMP
 - Copy all files to dated folders with size verification
 - Track copy history via `.cardbot` dotfile on the card
 - Queue multiple cards
@@ -255,6 +248,13 @@ cardbot/
 ## License
 
 TBD — will be added before public release
+
+## DISCLAIMER: Built with AI Coding Tools
+
+CardBot was built with the help of human guided AI coding models and many many many open source projects. There is no way in hell I could do this alone. A special thanks goes out to **[Pi](https://shittycodingagent.ai)** — a terminal-based coding agent.
+
+- Website: [shittycodingagent.ai](https://shittycodingagent.ai)
+- GitHub: [github.com/badlogic/pi-mono](https://github.com/badlogic/pi-mono)
 
 ## Notes
 
