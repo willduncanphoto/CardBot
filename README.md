@@ -20,10 +20,10 @@ CardBot generates a concise overview of your memory card and provides modern cop
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| macOS (with Xcode) | [x] Working | Native DiskArbitration, instant detection |
-| macOS (no Xcode) | [x] Working | Polling fallback, 1s interval |
-| Linux | [~] Experimental | Polling-based, needs real-world testing |
-| Windows | [ ] Not supported | Future goal |
+| macOS (with Xcode) | [OK] Working | Native DiskArbitration, instant detection |
+| macOS (no Xcode) | [OK] Working | Polling fallback, 1s interval |
+| Linux | [WIP] Experimental | Polling-based, needs real-world testing |
+| Windows | [--] Not supported | Future goal |
 
 ## Installation
 
@@ -172,7 +172,7 @@ Run `cardbot --setup` to change the destination. Run `cardbot --reset` to clear 
 
 ## Roadmap
 
-### [x] 0.1.0 – 0.1.5 — Detection, Analysis, Config, Copy & Hardening
+### [OK] 0.1.0 – 0.1.5 — Detection, Analysis, Config, Copy & Hardening
 - Native macOS card detection (DiskArbitration)
 - DCIM walking, date grouping, file type breakdown
 - EXIF camera model, XMP star ratings, parallel EXIF workers
@@ -184,13 +184,13 @@ Run `cardbot --setup` to change the destination. Run `cardbot --reset` to clear 
 - Bug fixes: race conditions, input drain, path escaping, log formatting
 - Test suite: 81 tests across 6 packages
 
-### [~] 0.1.6 — Copy Stuff (Next)
+### [WIP] 0.1.6 — Copy Stuff (Next)
 - Handle card removal during copy, disk full, cancel with cleanup
 - Read-only card warnings
 - Output mutex for concurrent progress/scan output
 - Better error messages
 
-### [ ] 0.1.7 — Cleanup
+### [TODO] 0.1.7 — Cleanup
 - Single-key input (no Enter required)
 - Startup under 100ms, ETA during copy
 
