@@ -96,13 +96,6 @@ Work items grouped by milestone.
 - [ ] Estimated time remaining during copy
 - [ ] Performance benchmarks
 
-### 0.1.9 — Distribution
-- [ ] README with install/usage
-- [ ] GitHub releases (macOS Intel/ARM, Linux AMD64/ARM64)
-- [ ] Homebrew formula
-- [ ] `--help` with examples
-- [ ] LICENSE file
-
 ---
 
 ## Later
