@@ -160,6 +160,8 @@ func main() {
 
 	a.printf("[%s] Starting CardBot %s...\n", ts(), version)
 	a.printf("[%s] Copy location is set to %s\n", ts(), cfg.Destination.Path)
+	fmt.Println()
+	time.Sleep(1 * time.Second)
 
 	if a.dryRun {
 		a.printf("[%s] Dry-run mode — no files will be copied\n", ts())
