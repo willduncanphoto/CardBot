@@ -106,7 +106,6 @@ Work items grouped by milestone.
 ## Upcoming
 
 ### 0.1.7 — Polish
-- [ ] Startup under 100ms
 - [ ] Estimated time remaining during copy
 - [ ] Show current filename during copy (deferred to renaming milestone)
 - [ ] Single-key input (raw terminal mode, no Enter required) — *maybe*
