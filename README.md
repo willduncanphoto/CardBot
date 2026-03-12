@@ -2,9 +2,9 @@
 
 A CLI tool for camera memory cards.
 
-## DISCLAIMER: CardBot was Built with AI Coding Tools
+## DISCLAIMER: Built with AI Coding Tools
 
-CardBot was built with the help of human guided AI coding models and many many many open source projects and years of professional experience. There is no way in hell I could do this alone. A special thanks goes out to **[Pi](https://shittycodingagent.ai)** — a terminal-based coding agent. I hated AI until I picked up Pi.
+CardBot was built with the help of AI coding models and many open source projects. There is no way that I could build this alone. A special thanks goes out to **[Pi](https://shittycodingagent.ai)** — a terminal-based coding agent.
 
 - Website: [shittycodingagent.ai](https://shittycodingagent.ai)
 - GitHub: [github.com/badlogic/pi-mono](https://github.com/badlogic/pi-mono)
