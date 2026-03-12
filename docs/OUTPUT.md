@@ -164,6 +164,24 @@ Queue is processed in insertion order. The queue count appears when additional c
 | `i` | Show card hardware info (device, model, serial, firmware) |
 | `t` | Run 256MB speed test (sequential write + read) |
 
+## Help Screen
+
+Output of the `[?]` command:
+
+```
+  Commands:
+  [a]  Copy All       copy all files to destination
+  [s]  Copy Selects   copy starred/picked files only    (coming in 0.1.8)
+  [p]  Copy Photos    copy photos only                  (coming in 0.1.8)
+  [v]  Copy Videos    copy videos only                  (coming in 0.1.8)
+  [e]  Eject          safely eject this card
+  [x]  Exit           skip this card, move to next
+  [i]  Card Info      show hardware details
+  [t]  Speed Test     benchmark read/write speed
+  [\]  Cancel Copy    cancel the copy in progress
+  [?]  Help           show this help
+```
+
 ## Content Layout
 
 Fixed-width columns for consistent visual scanning:
