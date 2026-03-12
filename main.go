@@ -321,6 +321,7 @@ func (a *app) displayCard(card *detect.Card) {
 	a.logf("Scanning %s", card.Path)
 	scanStart := time.Now()
 	analyzer := analyze.New(card.Path)
+	analyzer.SetWorkers(a.cfg.Advanced.ExifWorkers)
 	analyzer.OnProgress(func(count int) {
 		if count%100 == 0 {
 			fmt.Printf("\r[%s] Scanning %s... %d files", ts(), card.Path, count)

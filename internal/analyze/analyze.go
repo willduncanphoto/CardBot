@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/evanoberholster/imagemeta"
@@ -103,12 +105,22 @@ type ProgressFunc func(count int)
 // Analyzer scans a card's DCIM directory.
 type Analyzer struct {
 	cardPath   string
+	workers    int
 	onProgress ProgressFunc
 }
 
 // New creates a new analyzer for the given card path.
+// Default is 1 worker (sequential). Use SetWorkers to enable parallel EXIF.
 func New(cardPath string) *Analyzer {
-	return &Analyzer{cardPath: cardPath}
+	return &Analyzer{cardPath: cardPath, workers: 1}
+}
+
+// SetWorkers sets the number of parallel EXIF worker goroutines.
+func (a *Analyzer) SetWorkers(n int) {
+	if n < 1 {
+		n = 1
+	}
+	a.workers = n
 }
 
 // OnProgress sets a callback invoked during the walk with the running file count.
@@ -116,9 +128,29 @@ func (a *Analyzer) OnProgress(fn ProgressFunc) {
 	a.onProgress = fn
 }
 
+// fileEntry holds metadata collected during the fast directory walk.
+type fileEntry struct {
+	path  string
+	size  int64
+	ext   string // uppercase, no dot
+	mtime time.Time
+}
+
+// exifResult holds the output from a single EXIF worker.
+type exifResult struct {
+	path   string
+	date   time.Time
+	gear   string
+	rating int
+	ok     bool
+}
+
 // Analyze walks the DCIM tree and returns content stats grouped by date.
-// Extracts camera model from the first supported image, counts star ratings,
-// and uses DateTimeOriginal for date grouping when available.
+//
+// Phase 1: Fast directory walk — collects paths, sizes, extensions, mtimes.
+// Phase 2: Parallel EXIF extraction — N workers decode date, camera, rating.
+// Phase 3: Merge — combines walk data with EXIF results into grouped stats.
+//
 // Returns an empty Result (not nil) if the card has no files.
 // Returns an error only if DCIM cannot be read at all.
 func (a *Analyzer) Analyze() (*Result, error) {
@@ -127,16 +159,8 @@ func (a *Analyzer) Analyze() (*Result, error) {
 		return nil, err
 	}
 
-	groups := make(map[string]*dateAccumulator)
-	var totalSize, photoSize, videoSize int64
-	var fileCount, photoCount, videoCount int
-	var gear string
-	var starred int
-
-	// Reusable buffer for XMP rating scans. Allocated once, reused across all files.
-	// Avoids ~256KB allocation per file (was ~762MB total on a 3048-file card).
-	xmpBuf := make([]byte, xmpBufSize)
-
+	// --- Phase 1: Fast directory walk ---
+	var files []fileEntry
 	err := filepath.WalkDir(dcim, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -156,26 +180,93 @@ func (a *Analyzer) Analyze() (*Result, error) {
 			return nil
 		}
 
-		size := info.Size()
 		ext := normalizeExt(filepath.Ext(d.Name()))
-
-		// Skip files that aren't photos or videos.
 		if ext == "" || (!photoExts[ext] && !videoExts[ext]) {
 			return nil
 		}
 
-		// Default to file mtime; overwrite with EXIF date if available.
-		date := info.ModTime().Format("2006-01-02")
+		files = append(files, fileEntry{
+			path:  path,
+			size:  info.Size(),
+			ext:   ext,
+			mtime: info.ModTime(),
+		})
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
 
-		if supportedExif[ext] {
-			if exifDate, exifGear, rating, ok := readExif(path, xmpBuf); ok {
-				if !exifDate.IsZero() {
-					date = exifDate.Format("2006-01-02")
+	// --- Phase 2: Parallel EXIF extraction ---
+	// Build lookup of EXIF-eligible files and fan out to workers.
+	exifFiles := make(chan int, 256)
+	exifResults := make([]exifResult, len(files))
+
+	var processed atomic.Int64
+
+	var wg sync.WaitGroup
+	for w := 0; w < a.workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			xmpBuf := make([]byte, xmpBufSize)
+			for idx := range exifFiles {
+				f := &files[idx]
+				date, gear, rating, ok := readExif(f.path, xmpBuf)
+				exifResults[idx] = exifResult{
+					path:   f.path,
+					date:   date,
+					gear:   gear,
+					rating: rating,
+					ok:     ok,
 				}
-				if gear == "" && exifGear != "" {
-					gear = exifGear
+				n := processed.Add(1)
+				if a.onProgress != nil && n%100 == 0 {
+					a.onProgress(int(n))
 				}
-				if rating > 0 {
+			}
+		}()
+	}
+
+	// Count non-EXIF files for progress tracking.
+	var nonExifCount int64
+	for i := range files {
+		if supportedExif[files[i].ext] {
+			exifFiles <- i
+		} else {
+			nonExifCount++
+		}
+	}
+	close(exifFiles)
+	wg.Wait()
+
+	// Fire final progress with total count.
+	totalFiles := len(files)
+	if a.onProgress != nil {
+		a.onProgress(totalFiles)
+	}
+
+	// --- Phase 3: Merge ---
+	groups := make(map[string]*dateAccumulator)
+	var totalSize, photoSize, videoSize int64
+	var photoCount, videoCount, starred int
+	var gear string
+
+	for i := range files {
+		f := &files[i]
+
+		date := f.mtime.Format("2006-01-02")
+
+		if supportedExif[f.ext] {
+			r := &exifResults[i]
+			if r.ok {
+				if !r.date.IsZero() {
+					date = r.date.Format("2006-01-02")
+				}
+				if gear == "" && r.gear != "" {
+					gear = r.gear
+				}
+				if r.rating > 0 {
 					starred++
 				}
 			}
@@ -186,32 +277,24 @@ func (a *Analyzer) Analyze() (*Result, error) {
 			acc = &dateAccumulator{exts: make(map[string]bool)}
 			groups[date] = acc
 		}
-		acc.size += size
+		acc.size += f.size
 		acc.count++
-		acc.exts[ext] = true
+		acc.exts[f.ext] = true
 
-		totalSize += size
-		fileCount++
-		if a.onProgress != nil {
-			a.onProgress(fileCount)
-		}
-		if videoExts[ext] {
-			videoSize += size
+		totalSize += f.size
+		if videoExts[f.ext] {
+			videoSize += f.size
 			videoCount++
-		} else if photoExts[ext] {
-			photoSize += size
+		} else if photoExts[f.ext] {
+			photoSize += f.size
 			photoCount++
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
 	}
 
 	return &Result{
 		Groups:     buildGroups(groups),
 		TotalSize:  totalSize,
-		FileCount:  fileCount,
+		FileCount:  totalFiles,
 		PhotoSize:  photoSize,
 		PhotoCount: photoCount,
 		VideoSize:  videoSize,
@@ -340,5 +423,3 @@ func normalizeExt(ext string) string {
 	}
 	return strings.ToUpper(ext[1:])
 }
-
-
