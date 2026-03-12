@@ -26,6 +26,20 @@ Detection, analysis, EXIF, config, UI polish, copy with robustness, and UX impro
 - [ ] Disk space preflight scoped to selected file subset
 - [ ] Help removes strikethrough from `[s]`, `[p]`, `[v]` once implemented
 
+### Partial Copy State — Dotfile Design
+
+The `.cardbot` dotfile currently tracks a single copy event. With selective copy modes,
+a card may be partially copied in multiple independent passes (e.g. videos first in the
+field, photos later in the studio). The dotfile needs to track each mode independently.
+
+Questions to answer before implementation:
+- [ ] Store a `copies` array in the dotfile — one entry per mode with timestamp, dest, file count, bytes
+- [ ] Status line logic: what to show when multiple modes have been copied? e.g.
+      `Photos + Videos copied` vs `All copied` vs `Selects copied on ...`
+- [ ] Should `[a] Copy All` mark all selective modes as complete, or only the "all" mode?
+- [ ] If photos were copied and user runs `[a]`, should photo files be skipped (size check) or re-evaluated?
+- [ ] Consider a `completed_modes []string` field so the UI can show checkmarks per mode
+
 ---
 
 ## Code Cleanup

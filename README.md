@@ -114,7 +114,7 @@ Press `?` for the full command list, including hidden commands. See [docs/OUTPUT
 | `--reset` | Clear saved config |
 | `--version` | Print version and exit |
 
-## Copy
+## Copy (WIP)
 
 Press `a` to copy all files. CardBot groups files into dated folders based on EXIF date:
 
