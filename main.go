@@ -911,7 +911,7 @@ func (a *app) showHelp() {
 	fmt.Println("  [x]  Exit         skip this card, move to next")
 	fmt.Println("  [i]  Card Info    show hardware details")
 	fmt.Println("  [t]  Speed Test   benchmark read/write speed")
-	fmt.Println("  [\\]  (during copy) cancel the copy in progress")
+	fmt.Println("  [\\]  Cancel Copy   cancel the copy in progress")
 	fmt.Println("  [?]  Help         show this help")
 	fmt.Println()
 }
