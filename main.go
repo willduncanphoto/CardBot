@@ -46,7 +46,9 @@ type app struct {
 	printMu     sync.Mutex // serialises concurrent stdout writes during copy
 	cfg         *config.Config
 	logger      *cblog.Logger
-	inputChan   chan string // buffered input from stdin
+	inputChan   chan string    // buffered input from stdin
+	sigChan     chan os.Signal // SIGINT/SIGTERM
+	inputDone   chan struct{}  // closed on shutdown to stop readInput
 	dryRun      bool
 	copied      bool // true after successful copy of current card
 }
@@ -169,6 +171,11 @@ func main() {
 		}
 	}
 
+	// --- Signal handling ---
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	inputDone := make(chan struct{})
+
 	// --- Build app ---
 	inputChan := make(chan string, 10)
 	a := &app{
@@ -176,6 +183,8 @@ func main() {
 		cfg:       cfg,
 		logger:    logger,
 		inputChan: inputChan,
+		sigChan:   sigChan,
+		inputDone: inputDone,
 		dryRun:    *flagDryRun,
 	}
 
@@ -197,11 +206,6 @@ func main() {
 
 	a.printf("[%s] Scanning for memory cards...", ts())
 
-	// --- Signal handling ---
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	inputDone := make(chan struct{})
-
 	a.detector = detect.NewDetector()
 	if err := a.detector.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -209,7 +213,7 @@ func main() {
 	}
 	defer a.detector.Stop()
 
-	go readInput(inputChan, inputDone)
+	go readInput(a.inputChan, a.inputDone)
 
 	for {
 		select {
@@ -222,10 +226,10 @@ func main() {
 		case input := <-a.inputChan:
 			a.handleInput(input)
 
-		case <-sigChan:
+		case <-a.sigChan:
 			fmt.Println("\nShutting down...")
 			a.logf("Shutting down")
-			close(inputDone)
+			close(a.inputDone)
 			return
 		}
 	}
@@ -720,19 +724,31 @@ func (a *app) copyAll(card *detect.Card) {
 				cardRemovedDuringCopy = true
 				cancel()
 			} else {
-				// A queued card was removed; delegate to the normal handler.
+				// A queued card was removed; handle under printMu to avoid garbling progress output.
+				a.printMu.Lock()
 				a.handleRemoval(path)
+				a.printMu.Unlock()
 			}
 
 		case newCard := <-a.detector.Events():
 			// Queue any cards inserted while copying.
+			a.printMu.Lock()
 			a.handleCardEvent(newCard)
+			a.printMu.Unlock()
 
 		case input := <-a.inputChan:
 			if strings.ToLower(input) == "q" {
 				cancel()
 			}
 			// All other input is silently ignored during copy.
+
+		case <-a.sigChan:
+			cancel()
+			<-doneCh // wait for copy goroutine to finish
+			fmt.Println("\nShutting down...")
+			a.logf("Shutting down")
+			close(a.inputDone)
+			os.Exit(0)
 		}
 	}
 }

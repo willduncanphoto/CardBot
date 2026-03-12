@@ -226,7 +226,7 @@ func partialResult(files int, bytes int64, start time.Time, dest string) *Result
 // copyFile copies a single file with size verification.
 // If the destination already exists with the correct size, it is skipped.
 // madeDir caches directories already created to avoid redundant MkdirAll syscalls.
-func copyFile(dst, src string, srcSize int64, buf []byte, madeDir map[string]bool) error {
+func copyFile(dst, src string, srcSize int64, buf []byte, madeDir map[string]bool) (err error) {
 	// Skip if destination already exists with correct size (re-copy / resume).
 	if info, err := os.Stat(dst); err == nil && info.Size() == srcSize {
 		return nil
