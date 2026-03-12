@@ -1,19 +1,20 @@
 # CardBot
 
-A CLI tool for camera memory card review and ingestion.
+A CLI tool for camera memory cards.
 
 ## What CardBot Does
 
-CardBot scans the contents of your camera's memory cards to generate a concise overview of the cards contents and copy status. It will also rename your files one day.
+CardBot generate a concise overview of your memory card and provides modern copy tools to your files are safe and fast. It will also rename your files one day.
 
 **Current capabilities:**
 - Detect CFexpress, XQD, and SD cards on macOS and Linux
-- Quickly analyze a cards contents with a content overview
-- Show starred image count from from EXIF/XMP
-- Copy all files to dated folders with size verification
-- Track copy history via `.cardbot` dotfile on the card
+- Quickly analyze a cards content and technical information
+- Show starred image count for future quick copy opteration
+- Copy all files to dated folders with basic verification
+- Track copy history via `.cardbot` dotfile written to the card
 - Queue multiple cards
-- Eject cards cleanly
+- Eject cards safely
+- Doesn't delete your hard work
 
 ## Platform Support
 
