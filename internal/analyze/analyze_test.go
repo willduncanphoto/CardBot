@@ -8,16 +8,15 @@ import (
 )
 
 // createTestCard builds a fake DCIM structure in a temp directory.
-// Returns the card root path. Caller should defer os.RemoveAll.
+// File keys are relative paths from DCIM (e.g. "100NIKON/DSC_0001.NEF").
 func createTestCard(t *testing.T, files map[string]testFile) string {
 	t.Helper()
 	root := t.TempDir()
-	dcim := filepath.Join(root, "DCIM", "100NIKON")
-	if err := os.MkdirAll(dcim, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	for name, tf := range files {
-		path := filepath.Join(dcim, name)
+	for relPath, tf := range files {
+		path := filepath.Join(root, "DCIM", relPath)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
 		if err := os.WriteFile(path, make([]byte, tf.size), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -39,11 +38,11 @@ func date(y, m, d int) time.Time {
 
 func TestAnalyze_MultiDay(t *testing.T) {
 	root := createTestCard(t, map[string]testFile{
-		"DSC_0001.NEF": {size: 50000, mtime: date(2025, 3, 8)},
-		"DSC_0002.NEF": {size: 30000, mtime: date(2025, 3, 8)},
-		"DSC_0003.JPG": {size: 10000, mtime: date(2025, 3, 8)},
-		"DSC_0004.MOV": {size: 90000, mtime: date(2025, 3, 7)},
-		"DSC_0005.NEF": {size: 40000, mtime: date(2025, 3, 7)},
+		"100NIKON/DSC_0001.NEF": {size: 50000, mtime: date(2025, 3, 8)},
+		"100NIKON/DSC_0002.NEF": {size: 30000, mtime: date(2025, 3, 8)},
+		"100NIKON/DSC_0003.JPG": {size: 10000, mtime: date(2025, 3, 8)},
+		"100NIKON/DSC_0004.MOV": {size: 90000, mtime: date(2025, 3, 7)},
+		"100NIKON/DSC_0005.NEF": {size: 40000, mtime: date(2025, 3, 7)},
 	})
 
 	result, err := New(root).Analyze()
@@ -56,6 +55,18 @@ func TestAnalyze_MultiDay(t *testing.T) {
 	}
 	if result.TotalSize != 220000 {
 		t.Errorf("TotalSize = %d, want 220000", result.TotalSize)
+	}
+	if result.PhotoCount != 4 {
+		t.Errorf("PhotoCount = %d, want 4", result.PhotoCount)
+	}
+	if result.VideoCount != 1 {
+		t.Errorf("VideoCount = %d, want 1", result.VideoCount)
+	}
+	if result.PhotoSize != 130000 {
+		t.Errorf("PhotoSize = %d, want 130000", result.PhotoSize)
+	}
+	if result.VideoSize != 90000 {
+		t.Errorf("VideoSize = %d, want 90000", result.VideoSize)
 	}
 	if len(result.Groups) != 2 {
 		t.Fatalf("len(Groups) = %d, want 2", len(result.Groups))
@@ -72,7 +83,6 @@ func TestAnalyze_MultiDay(t *testing.T) {
 	if g0.Size != 90000 {
 		t.Errorf("Groups[0].Size = %d, want 90000", g0.Size)
 	}
-	// Extensions sorted alphabetically.
 	wantExts := []string{"JPG", "NEF"}
 	if len(g0.Extensions) != len(wantExts) {
 		t.Errorf("Groups[0].Extensions = %v, want %v", g0.Extensions, wantExts)
@@ -98,14 +108,13 @@ func TestAnalyze_MultiDay(t *testing.T) {
 	if len(g1.Extensions) != len(wantExts1) {
 		t.Errorf("Groups[1].Extensions = %v, want %v", g1.Extensions, wantExts1)
 	}
-
 }
 
 func TestAnalyze_SkipsHiddenFiles(t *testing.T) {
 	root := createTestCard(t, map[string]testFile{
-		"DSC_0001.NEF": {size: 1000, mtime: date(2025, 3, 8)},
-		".DS_Store":    {size: 500, mtime: date(2025, 3, 8)},
-		"._DSC_0001.NEF": {size: 300, mtime: date(2025, 3, 8)},
+		"100NIKON/DSC_0001.NEF":    {size: 1000, mtime: date(2025, 3, 8)},
+		"100NIKON/.DS_Store":       {size: 500, mtime: date(2025, 3, 8)},
+		"100NIKON/._DSC_0001.NEF":  {size: 300, mtime: date(2025, 3, 8)},
 	})
 
 	result, err := New(root).Analyze()
@@ -142,6 +151,9 @@ func TestAnalyze_EmptyCard(t *testing.T) {
 	if len(result.Groups) != 0 {
 		t.Errorf("len(Groups) = %d, want 0", len(result.Groups))
 	}
+	if result.FileDates == nil {
+		t.Error("FileDates should be non-nil (empty map, not nil)")
+	}
 }
 
 func TestAnalyze_NoDCIM(t *testing.T) {
@@ -154,19 +166,10 @@ func TestAnalyze_NoDCIM(t *testing.T) {
 }
 
 func TestAnalyze_HiddenDirectory(t *testing.T) {
-	root := t.TempDir()
-	dcim := filepath.Join(root, "DCIM", "100NIKON")
-	hidden := filepath.Join(root, "DCIM", ".Trashes")
-	if err := os.MkdirAll(dcim, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(hidden, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	// Visible file.
-	os.WriteFile(filepath.Join(dcim, "DSC_0001.NEF"), make([]byte, 1000), 0o644)
-	// File inside hidden directory — should be skipped entirely.
-	os.WriteFile(filepath.Join(hidden, "junk.dat"), make([]byte, 500), 0o644)
+	root := createTestCard(t, map[string]testFile{
+		"100NIKON/DSC_0001.NEF": {size: 1000, mtime: date(2025, 3, 8)},
+		".Trashes/junk.dat":     {size: 500, mtime: date(2025, 3, 8)},
+	})
 
 	result, err := New(root).Analyze()
 	if err != nil {
@@ -180,9 +183,9 @@ func TestAnalyze_HiddenDirectory(t *testing.T) {
 
 func TestAnalyze_ExtensionNormalization(t *testing.T) {
 	root := createTestCard(t, map[string]testFile{
-		"photo.nef":  {size: 100, mtime: date(2025, 3, 8)},
-		"photo.Nef":  {size: 100, mtime: date(2025, 3, 8)},
-		"photo2.NEF": {size: 100, mtime: date(2025, 3, 8)},
+		"100NIKON/photo.nef":  {size: 100, mtime: date(2025, 3, 8)},
+		"100NIKON/photo.Nef":  {size: 100, mtime: date(2025, 3, 8)},
+		"100NIKON/photo2.NEF": {size: 100, mtime: date(2025, 3, 8)},
 	})
 
 	result, err := New(root).Analyze()
@@ -196,6 +199,78 @@ func TestAnalyze_ExtensionNormalization(t *testing.T) {
 	g := result.Groups[0]
 	if len(g.Extensions) != 1 || g.Extensions[0] != "NEF" {
 		t.Errorf("Extensions = %v, want [NEF] (case should be normalized)", g.Extensions)
+	}
+}
+
+func TestAnalyze_FileDates(t *testing.T) {
+	root := createTestCard(t, map[string]testFile{
+		"100NIKON/DSC_0001.NEF": {size: 100, mtime: date(2025, 3, 8)},
+		"100NIKON/DSC_0002.MOV": {size: 200, mtime: date(2025, 3, 9)},
+	})
+
+	result, err := New(root).Analyze()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(result.FileDates) != 2 {
+		t.Fatalf("len(FileDates) = %d, want 2", len(result.FileDates))
+	}
+
+	// Without real EXIF data, dates should fall back to mtime.
+	want := map[string]string{
+		"100NIKON/DSC_0001.NEF": "2025-03-08",
+		"100NIKON/DSC_0002.MOV": "2025-03-09",
+	}
+	for path, wantDate := range want {
+		got, ok := result.FileDates[path]
+		if !ok {
+			t.Errorf("FileDates missing key %q", path)
+			continue
+		}
+		if got != wantDate {
+			t.Errorf("FileDates[%q] = %q, want %q", path, got, wantDate)
+		}
+	}
+}
+
+func TestAnalyze_MultipleSubfolders(t *testing.T) {
+	root := createTestCard(t, map[string]testFile{
+		"100NIKON/DSC_0001.NEF": {size: 100, mtime: date(2025, 3, 8)},
+		"101NIKON/DSC_0010.NEF": {size: 200, mtime: date(2025, 3, 8)},
+		"102NIKON/DSC_0020.JPG": {size: 300, mtime: date(2025, 3, 9)},
+	})
+
+	result, err := New(root).Analyze()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.FileCount != 3 {
+		t.Errorf("FileCount = %d, want 3", result.FileCount)
+	}
+	if len(result.Groups) != 2 {
+		t.Errorf("len(Groups) = %d, want 2", len(result.Groups))
+	}
+}
+
+func TestAnalyze_UnsupportedExtensionsSkipped(t *testing.T) {
+	root := createTestCard(t, map[string]testFile{
+		"100NIKON/DSC_0001.NEF": {size: 100, mtime: date(2025, 3, 8)},
+		"100NIKON/readme.txt":   {size: 50, mtime: date(2025, 3, 8)},
+		"100NIKON/data.xml":     {size: 75, mtime: date(2025, 3, 8)},
+	})
+
+	result, err := New(root).Analyze()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.FileCount != 1 {
+		t.Errorf("FileCount = %d, want 1 (only NEF should be counted)", result.FileCount)
+	}
+	if result.TotalSize != 100 {
+		t.Errorf("TotalSize = %d, want 100", result.TotalSize)
 	}
 }
 

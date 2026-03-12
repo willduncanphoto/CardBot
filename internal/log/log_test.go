@@ -79,11 +79,11 @@ func TestRotation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Write enough data to exceed maxSize (5 MB).
-	// Each line is ~50 bytes, so 110K lines ≈ 5.5 MB.
-	bigLine := strings.Repeat("x", 100)
-	for i := 0; i < 55000; i++ {
-		logger.Printf(bigLine)
+	// Write lines until we've definitely exceeded maxSize.
+	// Track approximate bytes to know when we've crossed the threshold.
+	line := strings.Repeat("x", 200)
+	for i := 0; i < 30000; i++ {
+		logger.Printf(line)
 	}
 	logger.Close()
 

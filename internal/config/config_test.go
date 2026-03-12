@@ -173,9 +173,22 @@ func TestLoad_PartialConfig(t *testing.T) {
 	if cfg.Destination.Path != "~/Custom" {
 		t.Errorf("Destination.Path = %q, want ~/Custom", cfg.Destination.Path)
 	}
-	// Defaults preserved for unset fields.
-	if cfg.Advanced.BufferSizeKB != 256 {
-		t.Errorf("BufferSizeKB = %d, want 256 (default)", cfg.Advanced.BufferSizeKB)
+	// All unset fields should preserve defaults.
+	defaults := Defaults()
+	if cfg.Advanced.BufferSizeKB != defaults.Advanced.BufferSizeKB {
+		t.Errorf("BufferSizeKB = %d, want %d (default)", cfg.Advanced.BufferSizeKB, defaults.Advanced.BufferSizeKB)
+	}
+	if cfg.Advanced.ExifWorkers != defaults.Advanced.ExifWorkers {
+		t.Errorf("ExifWorkers = %d, want %d (default)", cfg.Advanced.ExifWorkers, defaults.Advanced.ExifWorkers)
+	}
+	if cfg.Advanced.LogFile != defaults.Advanced.LogFile {
+		t.Errorf("LogFile = %q, want %q (default)", cfg.Advanced.LogFile, defaults.Advanced.LogFile)
+	}
+	if cfg.Output.Color != defaults.Output.Color {
+		t.Errorf("Color = %v, want %v (default)", cfg.Output.Color, defaults.Output.Color)
+	}
+	if cfg.Output.Quiet != defaults.Output.Quiet {
+		t.Errorf("Quiet = %v, want %v (default)", cfg.Output.Quiet, defaults.Output.Quiet)
 	}
 }
 
