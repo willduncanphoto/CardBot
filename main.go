@@ -11,10 +11,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/chzyer/readline"
 	"github.com/illwill/cardbot/internal/analyze"
 	"github.com/illwill/cardbot/internal/config"
 	"github.com/illwill/cardbot/internal/detect"
 	cblog "github.com/illwill/cardbot/internal/log"
+	"github.com/illwill/cardbot/internal/pick"
 )
 
 const version = "0.1.3"
@@ -68,25 +70,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *flagSetup {
-		cfgPath, err := config.Path()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: could not determine config path: %v\n", err)
-			os.Exit(1)
-		}
-		cfg, _, err := config.Load(cfgPath)
-		if err != nil {
-			cfg = config.Defaults()
-		}
-		cfg.Destination.Path = promptDestination(cfg.Destination.Path)
-		if err := config.Save(cfg, cfgPath); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: could not save config: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Printf("Destination saved. Please restart CardBot.\n")
-		os.Exit(0)
-	}
-
 	if *flagReset {
 		cfgPath, err := config.Path()
 		if err != nil {
@@ -126,17 +109,21 @@ func main() {
 		cfg.Destination.Path = *flagDest
 	}
 
-	// --- First-run: prompt for destination if config doesn't exist ---
+	// --- First-run or --setup: prompt for destination, then continue into the app ---
+	needsSetup := *flagSetup
 	if cfgPath != "" {
 		if _, statErr := os.Stat(cfgPath); os.IsNotExist(statErr) {
-			cfg.Destination.Path = promptDestination(cfg.Destination.Path)
+			needsSetup = true
+		}
+	}
+	if needsSetup {
+		cfg.Destination.Path = promptDestination(cfg.Destination.Path)
+		if cfgPath != "" {
 			if saveErr := config.Save(cfg, cfgPath); saveErr != nil {
 				fmt.Fprintf(os.Stderr, "Warning: could not save config: %v\n", saveErr)
-			} else {
-				fmt.Printf("Config saved to %s\n", cfgPath)
 			}
-			fmt.Println()
 		}
+		fmt.Println()
 	}
 
 	// --- Set up logger ---
@@ -209,21 +196,94 @@ func main() {
 	}
 }
 
-// promptDestination asks the user to enter a destination path, returning
-// defaultPath if the user presses Enter without typing anything.
+// promptDestination asks the user to pick a destination path.
+// On macOS, opens the native folder picker. Falls back to readline on Linux.
 func promptDestination(defaultPath string) string {
 	fmt.Println("Welcome to CardBot!")
 	fmt.Println()
-	fmt.Printf("Where should CardBot copy your files?\n")
-	fmt.Printf("Destination [%s]: ", defaultPath)
+	fmt.Println("Where should CardBot copy your work?")
+	fmt.Println()
 
-	reader := bufio.NewReader(os.Stdin)
-	line, _ := reader.ReadString('\n')
+	expanded, err := config.ExpandPath(defaultPath)
+	if err != nil {
+		expanded = defaultPath
+	}
+
+	picked, err := pick.Folder(expanded)
+	if err == nil && picked != "" {
+		fmt.Printf("Destination: %s\n", picked)
+		return picked
+	}
+
+	// Fallback: readline with tab completion.
+	return promptDestinationReadline(expanded)
+}
+
+// promptDestinationReadline is the fallback path prompt with tab completion.
+func promptDestinationReadline(defaultPath string) string {
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:       "Destination: ",
+		HistoryLimit: 0,
+		AutoComplete: readline.NewPrefixCompleter(readline.PcItemDynamic(pathCompleter)),
+	})
+	if err != nil {
+		fmt.Printf("Destination [%s]: ", defaultPath)
+		reader := bufio.NewReader(os.Stdin)
+		line, _ := reader.ReadString('\n')
+		line = strings.TrimSpace(line)
+		if line == "" {
+			return defaultPath
+		}
+		return line
+	}
+	defer rl.Close()
+
+	rl.WriteStdin([]byte(defaultPath))
+	line, err := rl.Readline()
+	if err != nil {
+		return defaultPath
+	}
 	line = strings.TrimSpace(line)
 	if line == "" {
 		return defaultPath
 	}
 	return line
+}
+
+// pathCompleter returns directory completions for readline tab completion.
+func pathCompleter(prefix string) []string {
+	expanded, err := config.ExpandPath(prefix)
+	if err != nil {
+		expanded = prefix
+	}
+
+	var dir, partial string
+	if strings.HasSuffix(expanded, "/") {
+		dir = expanded
+		partial = ""
+	} else {
+		dir = expanded[:strings.LastIndex(expanded, "/")+1]
+		partial = expanded[strings.LastIndex(expanded, "/")+1:]
+	}
+	if dir == "" {
+		dir = "."
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+
+	var completions []string
+	for _, e := range entries {
+		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+		if strings.HasPrefix(e.Name(), partial) {
+			completions = append(completions, dir+e.Name()+"/")
+		}
+	}
+	return completions
 }
 
 func (a *app) handleCardEvent(card *detect.Card) {

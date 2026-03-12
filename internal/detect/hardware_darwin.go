@@ -25,34 +25,33 @@ var (
 // On macOS, CID (Card Identification register) is not accessible through
 // USB card readers. See hardware_linux.go for CID support.
 type HardwareInfo struct {
-	// Device size from diskutil (may differ from filesystem size due to partitioning/formatting)
-	DeviceBytes int64
-
-	// Filesystem size (what Statfs reports)
+	// From syscall / diskutil
+	DeviceBytes     int64
 	FilesystemBytes int64
+	BlockSize       int64
+	DeviceID        string
+	VolumeUUID      string
+	IsRemovable     bool
+	Protocol        string
+	FileSystem      string
+	PartitionScheme string
+	ReadOnly        bool
 
-	// Block size
-	BlockSize int64
-
-	// Device identifier (e.g., "disk4s1")
-	DeviceID string
-
-	// Volume UUID if available
-	VolumeUUID string
-
-	// Whether this is a removable device
-	IsRemovable bool
-
-	// Protocol (USB, SD Card, etc.)
-	Protocol string
+	// From system_profiler (CFexpress/XQD/NVMe cards only)
+	Model       string
+	Serial      string
+	Firmware    string
+	LinkSpeed   string
+	LinkWidth   string
+	TrimSupport bool
+	SmartStatus string
 }
 
 // GetHardwareInfo attempts to retrieve hardware information for the given mount path.
-// On macOS with USB readers, this returns limited info (no CID access).
 func GetHardwareInfo(mountPath string) (*HardwareInfo, error) {
 	info := &HardwareInfo{}
 
-	// Get filesystem stats
+	// Filesystem stats
 	var stat syscall.Statfs_t
 	if err := syscall.Statfs(mountPath, &stat); err != nil {
 		return nil, err
@@ -60,83 +59,167 @@ func GetHardwareInfo(mountPath string) (*HardwareInfo, error) {
 	info.FilesystemBytes = int64(stat.Blocks) * int64(stat.Bsize)
 	info.BlockSize = int64(stat.Bsize)
 
-	// Try to get device info from diskutil
+	// Device ID from diskutil
 	deviceID, err := getDeviceID(mountPath)
 	if err != nil {
-		return info, nil // Return what we have
+		return info, nil
 	}
 	info.DeviceID = deviceID
 
-	// Query diskutil for device properties
-	diskInfo, err := getDiskUtilInfo(deviceID)
-	if err == nil {
-		info.DeviceBytes = diskInfo.TotalSize
-		info.IsRemovable = diskInfo.Removable
-		info.Protocol = diskInfo.Protocol
-		info.VolumeUUID = diskInfo.VolumeUUID
-	}
-
-	return info, nil
-}
-
-type diskUtilInfo struct {
-	TotalSize  int64
-	Removable  bool
-	Protocol   string
-	VolumeUUID string
-}
-
-func getDeviceID(mountPath string) (string, error) {
-	cmd := exec.Command("diskutil", "info", mountPath)
-	out, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-
-	matches := reDeviceID.FindStringSubmatch(string(out))
-	if len(matches) >= 2 {
-		return matches[1], nil
-	}
-
-	return "", fmt.Errorf("device identifier not found")
-}
-
-func getDiskUtilInfo(deviceID string) (*diskUtilInfo, error) {
-	// Get parent disk (e.g., disk4s1 -> disk4)
+	// Parent disk (disk4s1 -> disk4)
 	parentDisk := deviceID
 	if m := reParentDisk.FindStringSubmatch(deviceID); len(m) >= 2 {
 		parentDisk = m[1]
 	}
 
-	// Query the physical disk for size info
-	cmd := exec.Command("diskutil", "info", parentDisk)
-	out, err := cmd.Output()
+	// Enrich from diskutil
+	if du, err := getDiskUtilInfo(deviceID, parentDisk); err == nil {
+		info.DeviceBytes = du.TotalSize
+		info.IsRemovable = du.Removable
+		info.Protocol = du.Protocol
+		info.VolumeUUID = du.VolumeUUID
+		info.FileSystem = du.FileSystem
+		info.PartitionScheme = du.PartitionScheme
+		info.ReadOnly = du.ReadOnly
+	}
+
+	// Enrich from system_profiler (NVMe/PCIe cards — CFexpress, XQD)
+	if sp, err := getNVMeInfo(parentDisk); err == nil {
+		info.Model = sp.Model
+		info.Serial = sp.Serial
+		info.Firmware = sp.Firmware
+		info.LinkSpeed = sp.LinkSpeed
+		info.LinkWidth = sp.LinkWidth
+		info.TrimSupport = sp.TrimSupport
+		info.SmartStatus = sp.SmartStatus
+	}
+
+	return info, nil
+}
+
+// diskUtilInfo holds parsed diskutil output.
+type diskUtilInfo struct {
+	TotalSize       int64
+	Removable       bool
+	Protocol        string
+	VolumeUUID      string
+	FileSystem      string
+	PartitionScheme string
+	ReadOnly        bool
+}
+
+func getDeviceID(mountPath string) (string, error) {
+	out, err := exec.Command("diskutil", "info", mountPath).Output()
+	if err != nil {
+		return "", err
+	}
+	if m := reDeviceID.FindStringSubmatch(string(out)); len(m) >= 2 {
+		return m[1], nil
+	}
+	return "", fmt.Errorf("device identifier not found")
+}
+
+func getDiskUtilInfo(deviceID, parentDisk string) (*diskUtilInfo, error) {
+	info := &diskUtilInfo{}
+
+	// Parent disk for physical properties
+	out, err := exec.Command("diskutil", "info", parentDisk).Output()
 	if err != nil {
 		return nil, err
 	}
-
-	info := &diskUtilInfo{}
 	output := string(out)
 
 	if m := reDiskSize.FindStringSubmatch(output); len(m) >= 2 {
-		size, _ := strconv.ParseInt(m[1], 10, 64)
-		info.TotalSize = size
+		info.TotalSize, _ = strconv.ParseInt(m[1], 10, 64)
 	}
-
 	if m := reRemovable.FindStringSubmatch(output); len(m) >= 2 {
 		info.Removable = m[1] == "Yes" || m[1] == "Removable"
 	}
-
 	if m := reProtocol.FindStringSubmatch(output); len(m) >= 2 {
 		info.Protocol = strings.TrimSpace(m[1])
 	}
 
-	// Get volume UUID from the partition device
-	cmd = exec.Command("diskutil", "info", deviceID)
-	out, _ = cmd.Output()
-	if m := reVolumeUUID.FindStringSubmatch(string(out)); len(m) >= 2 {
+	reContent := regexp.MustCompile(`Content \(IOContent\):\s*(.+)`)
+	if m := reContent.FindStringSubmatch(output); len(m) >= 2 {
+		info.PartitionScheme = strings.TrimSpace(m[1])
+	}
+
+	// Partition for volume properties
+	out, err = exec.Command("diskutil", "info", deviceID).Output()
+	if err != nil {
+		return info, nil
+	}
+	output = string(out)
+
+	if m := reVolumeUUID.FindStringSubmatch(output); len(m) >= 2 {
 		info.VolumeUUID = m[1]
 	}
+
+	reFS := regexp.MustCompile(`File System Personality:\s*(.+)`)
+	if m := reFS.FindStringSubmatch(output); len(m) >= 2 {
+		info.FileSystem = strings.TrimSpace(m[1])
+	}
+
+	reRO := regexp.MustCompile(`Volume Read-Only:\s*(\w+)`)
+	if m := reRO.FindStringSubmatch(output); len(m) >= 2 {
+		info.ReadOnly = m[1] == "Yes"
+	}
+
+	return info, nil
+}
+
+// nvmeInfo holds parsed system_profiler NVMe output.
+type nvmeInfo struct {
+	Model       string
+	Serial      string
+	Firmware    string
+	LinkSpeed   string
+	LinkWidth   string
+	TrimSupport bool
+	SmartStatus string
+}
+
+// getNVMeInfo queries system_profiler SPNVMeDataType and finds the entry
+// matching the given BSD name (e.g. "disk4").
+func getNVMeInfo(bsdName string) (*nvmeInfo, error) {
+	out, err := exec.Command("system_profiler", "SPNVMeDataType").Output()
+	if err != nil {
+		return nil, err
+	}
+
+	// Split into per-device blocks on BSD Name lines.
+	// Each block starts with "BSD Name: diskN".
+	blocks := strings.Split(string(out), "\n\n")
+	var target string
+	for _, block := range blocks {
+		if strings.Contains(block, "BSD Name: "+bsdName) {
+			target = block
+			break
+		}
+	}
+	if target == "" {
+		return nil, fmt.Errorf("BSD name %s not found in NVMe data", bsdName)
+	}
+
+	info := &nvmeInfo{}
+
+	re := func(pattern string) string {
+		m := regexp.MustCompile(pattern).FindStringSubmatch(target)
+		if len(m) >= 2 {
+			return strings.TrimSpace(m[1])
+		}
+		return ""
+	}
+
+	info.Model = re(`Model:\s*(.+)`)
+	info.Serial = re(`Serial Number:\s*(.+)`)
+	info.Firmware = re(`Revision:\s*(.+)`)
+	info.LinkSpeed = re(`Link Speed:\s*(.+)`)
+	info.LinkWidth = re(`Link Width:\s*(.+)`)
+	info.SmartStatus = re(`S\.M\.A\.R\.T\. status:\s*(.+)`)
+
+	trim := re(`TRIM Support:\s*(.+)`)
+	info.TrimSupport = strings.EqualFold(trim, "yes")
 
 	return info, nil
 }
@@ -147,31 +230,40 @@ func FormatHardwareInfo(info *HardwareInfo) string {
 		return "Hardware info unavailable"
 	}
 
-	var parts []string
-
-	parts = append(parts, fmt.Sprintf("Device: %s", info.DeviceID))
-
-	if info.Protocol != "" {
-		parts = append(parts, fmt.Sprintf("Protocol: %s", info.Protocol))
+	var lines []string
+	add := func(label, value string) {
+		if value != "" {
+			lines = append(lines, fmt.Sprintf("  %-18s%s", label, value))
+		}
 	}
+
+	add("Device:", info.DeviceID)
+	add("Model:", info.Model)
+	add("Serial:", info.Serial)
+	add("Firmware:", info.Firmware)
+	add("Protocol:", info.Protocol)
+	add("Link Speed:", info.LinkSpeed)
+	add("Link Width:", info.LinkWidth)
+	add("File System:", info.FileSystem)
+	add("Partition Map:", info.PartitionScheme)
 
 	if info.DeviceBytes > 0 {
-		parts = append(parts, fmt.Sprintf("Raw Size: %s", FormatBytes(info.DeviceBytes)))
+		add("Raw Size:", FormatBytes(info.DeviceBytes))
 	}
-
 	if info.FilesystemBytes > 0 {
-		parts = append(parts, fmt.Sprintf("Filesystem: %s", FormatBytes(info.FilesystemBytes)))
+		add("Volume Size:", FormatBytes(info.FilesystemBytes))
 	}
 
-	if info.IsRemovable {
-		parts = append(parts, "Removable: Yes")
+	if info.TrimSupport {
+		add("TRIM:", "Supported")
 	}
-
-	if info.VolumeUUID != "" {
-		parts = append(parts, fmt.Sprintf("UUID: %s", info.VolumeUUID))
+	if info.SmartStatus != "" {
+		add("S.M.A.R.T.:", info.SmartStatus)
 	}
+	if info.ReadOnly {
+		add("Read-Only:", "Yes")
+	}
+	add("Volume UUID:", info.VolumeUUID)
 
-	parts = append(parts, "CID: Not available (USB reader)")
-
-	return strings.Join(parts, "\n  ")
+	return strings.Join(lines, "\n")
 }
