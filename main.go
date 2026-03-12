@@ -14,6 +14,7 @@ import (
 	"github.com/illwill/cardbot/internal/analyze"
 	"github.com/illwill/cardbot/internal/config"
 	"github.com/illwill/cardbot/internal/detect"
+	"github.com/illwill/cardbot/internal/dotfile"
 	cblog "github.com/illwill/cardbot/internal/log"
 	"github.com/illwill/cardbot/internal/pick"
 	"github.com/illwill/cardbot/internal/speedtest"
@@ -329,6 +330,8 @@ func (a *app) isCurrentCard(path string) bool {
 }
 
 func (a *app) printCardInfo(card *detect.Card, result *analyze.Result) {
+	status := dotfile.Read(card.Path)
+	fmt.Printf("  Status:   %s\n", dotfile.FormatStatus(status))
 	fmt.Printf("  Path:     %s\n", card.Path)
 	var pct int64
 	if card.TotalBytes > 0 {
