@@ -106,10 +106,10 @@ Work items grouped by milestone.
 ## Upcoming
 
 ### 0.1.7 — Polish
-- [ ] Single-key input (raw terminal mode, no Enter required)
 - [ ] Startup under 100ms
 - [ ] Estimated time remaining during copy
 - [ ] Show current filename during copy (deferred to renaming milestone)
+- [ ] Single-key input (raw terminal mode, no Enter required) — *maybe*
 
 ### 0.1.8 — Selective Copy
 - [ ] `[s]` Copy Selects — copy starred/picked files only (XMP rating > 0)
