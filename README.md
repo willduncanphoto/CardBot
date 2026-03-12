@@ -11,7 +11,7 @@ CardBot was built with the help of human guided AI coding models and many open s
 
 ## What CardBot Does
 
-CardBot scans the contents of your camera's memory cards to generate a quick overview, allowin you to have clear varification if you have ingested your work.
+CardBot scans the contents of your camera's memory cards to generate a quick overview, allowing you to have clear verification if you have ingested your work.
 
 **Current capabilities:**
 - Detect CFexpress, XQD, and SD cards on macOS and Linux
@@ -73,6 +73,7 @@ Run CardBot and insert a memory card:
 ```
 [2026-03-11 21:15:32] Starting CardBot 0.1.5...
 [2026-03-11 21:15:32] Copy location is set to ~/Pictures/CardBot
+[2026-03-11 21:15:32] File renaming is set to Original
 [2026-03-11 21:15:32] Scanning for memory cards...card found.
 [2026-03-11 21:15:33] Scanning /Volumes/NIKON Z 9  ... 3051 files ✓
 [2026-03-11 21:15:33] Scan completed in 0 seconds
@@ -177,7 +178,7 @@ Run `cardbot --setup` to change the destination. Run `cardbot --reset` to clear 
 
 ## Roadmap
 
-### ✅ 0.1.0 – 0.1.5 — Detection, Analysis, Config, Copy
+### ✅ 0.1.0 – 0.1.5 — Detection, Analysis, Config, Copy & Hardening
 - Native macOS card detection (DiskArbitration)
 - DCIM walking, date grouping, file type breakdown
 - EXIF camera model, XMP star ratings, parallel EXIF workers
@@ -185,23 +186,21 @@ Run `cardbot --setup` to change the destination. Run `cardbot --reset` to clear 
 - Config file with first-run setup and native folder picker
 - Brand name cleanup and ANSI colors
 - Copy all files with dated folders, size verification, dotfile tracking
+- File collision skip (same size = skip, safe re-copy)
+- Bug fixes: race conditions, input drain, path escaping, log formatting
+- Test suite: 81 tests across 6 packages
 
 ### 🔧 0.1.6 — Copy Robustness (Next)
 - Handle card removal during copy, disk full, cancel with cleanup
-- File collision handling, read-only card warnings
+- Read-only card warnings
+- Output mutex for concurrent progress/scan output
+- Better error messages
 
-### 📋 0.1.7 — Linux
-- Verified testing on Ubuntu, Fedora, Debian
-
-### 📋 0.1.8 — Polish
+### 📋 0.1.7 — Polish
 - Single-key input (no Enter required)
 - Startup under 100ms, ETA during copy
 
-### 📋 0.1.9 — Distribution
-- GitHub releases (macOS Intel/ARM, Linux AMD64/ARM64)
-- Homebrew formula
-
-**Later:** Windows support, starred-only copy mode, resume interrupted copies, video metadata
+**Later:** Windows support, Linux testing, file renaming, starred-only copy mode, resume interrupted copies, video metadata, auto-update
 
 ## Project Structure
 
@@ -249,8 +248,9 @@ cardbot/
 
 ## Size
 
-- Binary: ~5.1 MB
-- Source: ~3,600 lines of Go across 20 files
+- Binary: ~4.9 MB
+- Source: ~3,500 lines of Go across 20 files
+- Tests: ~1,350 lines, 81 tests across 6 packages
 
 ## License
 
