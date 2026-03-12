@@ -8,12 +8,16 @@ CardBot generates a concise overview of your memory card and provides modern cop
 
 **Current capabilities:**
 - Detect CFexpress, XQD, and SD cards on macOS and Linux
-- Quickly analyze a cards content and technical information
+- Quickly analyze a card's content and technical information
 - Show starred image count for future quick copy operation
-- Copy all files to dated folders with basic verification
+- Copy all files to dated folders with verification
+- Cancel or interrupt copy safely (card removal, `[\]` key, Ctrl+C)
+- Disk space preflight check before copy
+- Read-only card warnings
 - Track copy history via `.cardbot` dotfile written to the card
 - Queue multiple cards
 - Eject cards safely
+- Help command with full key reference
 - Doesn't delete your hard work
 
 ## Platform Support
@@ -65,15 +69,15 @@ Run CardBot and insert a memory card:
 **Output example:**
 
 ```
-[2026-03-11 21:15:32] Starting CardBot 0.1.5...
-[2026-03-11 21:15:32] Copy location is set to ~/Pictures/CardBot
-[2026-03-11 21:15:32] File renaming is set to Original
-[2026-03-11 21:15:32] Scanning for memory cards...card found.
-[2026-03-11 21:15:33] Scanning /Volumes/NIKON Z 9  ... 3051 files ✓
-[2026-03-11 21:15:33] Scan completed in 0 seconds
+[2026-03-12 12:15:32] Starting CardBot 0.1.6...
+[2026-03-12 12:15:32] Copy location is set to ~/Pictures/CardBot
+[2026-03-12 12:15:32] File renaming is set to Original
+[2026-03-12 12:15:32] Scanning for memory cards...card found.
+[2026-03-12 12:15:33] Scanning /Volumes/NIKON Z 9  ... 3051 files ✓
+[2026-03-12 12:15:33] Scan completed in 0 seconds
 
   Status:   New
-  Path:     /Volumes/NIKON Z 9  
+  Path:     /Volumes/NIKON Z 9
   Storage:  96.4 GB / 476.9 GB (20%)
   Camera:   Nikon Z 9
   Starred:  1
@@ -82,16 +86,33 @@ Run CardBot and insert a memory card:
 
   Total:    3048 photos, 0 videos, 96.0 GB
 ────────────────────────────────────────
-[a] Copy All  [e] Eject  [c] Cancel  >
+[a] Copy All  [e] Eject  [x] Exit  [?]  >
 ```
 
 ### Commands
 
 | Key | Action |
 |-----|--------|
-| `a` + Enter | Copy all files to destination |
-| `e` + Enter | Eject the card |
-| `c` + Enter | Cancel / dismiss |
+| `a` | Copy all files to destination |
+| `e` | Eject the card |
+| `x` | Exit — skip this card, move to next |
+| `?` | Show help with all commands |
+
+Press `?` for the full command list, including hidden commands.
+
+### Help Screen
+
+```
+  Commands:
+  [a]  Copy All     copy all files to destination
+  [s]  Copy Selects  copy starred/picked files only  (coming soon)
+  [e]  Eject        safely eject this card
+  [x]  Exit         skip this card, move to next
+  [i]  Card Info    show hardware details
+  [t]  Speed Test   benchmark read/write speed
+  [\]  (during copy) cancel the copy in progress
+  [?]  Help         show this help
+```
 
 ### CLI Flags
 
@@ -121,7 +142,18 @@ Press `a` to copy all files. CardBot groups files into dated folders based on EX
         └── DSC_0200.MOV
 ```
 
-After a successful copy, CardBot writes a `.cardbot` file to the card. On re-insert, the card shows `Status: Copied on 2026-03-11 21:31` instead of `Status: New`.
+**During copy:**
+- Press `\` to cancel the copy in progress (files already copied are kept)
+- If the card is removed mid-copy, CardBot detects it and stops gracefully
+- Ctrl+C shuts down cleanly
+
+**After copy:**
+- CardBot writes a `.cardbot` file to the card
+- On re-insert, the card shows `Status: Copied on 2026-03-12 12:31` instead of `Status: New`
+- Re-copying the same card skips files that already exist with the correct size
+
+**Invalid cards:**
+- Cards without a DCIM folder show "Card is invalid (no DCIM found)" with basic info and eject/exit options
 
 ## Supported Cameras
 
@@ -184,17 +216,27 @@ Run `cardbot --setup` to change the destination. Run `cardbot --reset` to clear 
 - Bug fixes: race conditions, input drain, path escaping, log formatting
 - Test suite: 81 tests across 6 packages
 
-### [WIP] 0.1.6 — Copy Stuff (Next)
-- Handle card removal during copy, disk full, cancel with cleanup
+### [OK] 0.1.6 — Copy Robustness & UX
+- Cancel during copy (`[\]` key), card removal mid-copy, Ctrl+C during copy
+- Disk space preflight check
 - Read-only card warnings
 - Output mutex for concurrent progress/scan output
-- Better error messages
+- Path traversal guard on copy destinations
+- File handle leak fix, goroutine leak fix, named return for close errors
+- Invalid card handling (no DCIM → friendly message, eject/exit only)
+- Help command (`[?]`) with full key reference
+- Unknown input feedback
+- Friendly error messages (disk full, permission denied, I/O errors)
+- Key remapping: `x` = exit, `\` = cancel copy, `s` = selects (stub)
+- Test suite: 97 tests across 6 packages, all passing with `-race`
 
-### [TODO] 0.1.7 — Cleanup
+### [TODO] 0.1.7 — Polish
 - Single-key input (no Enter required)
 - Startup under 100ms, ETA during copy
+- Copy Selects mode (starred files only)
+- Show current filename during copy (deferred to renaming milestone)
 
-**Later:** Windows support, Linux testing, file renaming, starred-only copy mode, resume interrupted copies, video metadata, auto-update, copyright/personal data injection on copy
+**Later:** Windows support, Linux testing, file renaming, resume interrupted copies, video metadata, auto-update, copyright/personal data injection on copy
 
 ## Project Structure
 
@@ -204,14 +246,19 @@ cardbot/
 ├── internal/
 │   ├── analyze/
 │   │   ├── analyze.go               # DCIM walking, parallel EXIF/XMP, date grouping
-│   │   └── analyze_test.go          # Unit tests
+│   │   └── analyze_test.go
 │   ├── config/
-│   │   └── config.go                # Config load/save, schema versioning, path expansion
+│   │   ├── config.go                # Config load/save, schema versioning, path expansion
+│   │   └── config_test.go
 │   ├── copy/
-│   │   └── copy.go                  # File copy engine — walk, copy, verify
+│   │   ├── copy.go                  # File copy engine — walk, copy, verify, cancel
+│   │   ├── copy_test.go
+│   │   ├── diskspace_unix.go        # Disk free space check (darwin/linux)
+│   │   └── diskspace_other.go       # Fallback stub
 │   ├── detect/
 │   │   ├── card.go                  # Card struct
 │   │   ├── shared.go                # Brand detection, FormatBytes
+│   │   ├── shared_test.go
 │   │   ├── detect_darwin.go         # macOS native (CGO + DiskArbitration)
 │   │   ├── detect_darwin_nocgo.go   # macOS polling fallback
 │   │   ├── detect_linux.go          # Linux polling
@@ -219,9 +266,11 @@ cardbot/
 │   │   ├── hardware_darwin.go       # macOS hardware info (IOKit, system_profiler)
 │   │   └── hardware_linux.go        # Linux hardware info (sysfs, CID)
 │   ├── dotfile/
-│   │   └── dotfile.go               # .cardbot read/write for copy tracking
+│   │   ├── dotfile.go               # .cardbot read/write for copy tracking
+│   │   └── dotfile_test.go
 │   ├── log/
-│   │   └── log.go                   # File logging with rotation
+│   │   ├── log.go                   # File logging with rotation
+│   │   └── log_test.go
 │   ├── pick/
 │   │   ├── pick_darwin.go           # Native macOS folder picker (osascript)
 │   │   └── pick_other.go            # Fallback stub
@@ -243,8 +292,8 @@ cardbot/
 ## Size
 
 - Binary: ~4.9 MB
-- Source: ~3,500 lines of Go across 20 files
-- Tests: ~1,350 lines, 81 tests across 6 packages
+- Source: ~3,800 lines of Go across 24 files
+- Tests: ~1,600 lines, 97 tests across 6 packages
 
 ## License
 

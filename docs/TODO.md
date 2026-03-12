@@ -1,30 +1,24 @@
 # CardBot — TODO
 
-## Current Version: 0.1.5
+## Current Version: 0.1.6
 
-Detection, analysis, EXIF, config, UI polish, and basic copy complete.
+Detection, analysis, EXIF, config, UI polish, copy with robustness, and UX improvements complete.
 
 ---
 
-## 0.1.6 — Copy Robustness (Next Up)
+## 0.1.7 — Polish (Next Up)
 
-- [ ] Handle card removed during copy
-- [ ] Handle destination disk full
-- [ ] Cancel copy in progress (with cleanup of partial files)
-- [ ] File collision logic (skip if dest file exists and size matches)
-- [ ] Handle "no DCIM" case — detect as volume, warn "not a camera card?"
-- [ ] Handle read-only cards — warn before copy that dotfile can't be written
-- [ ] Output mutex — add `outputMu sync.Mutex` to `app`; copy progress + scan
-      goroutine will interleave without it
-- [ ] Cancel in-flight scan on removal — `displayCard` goroutine currently finishes
-      and prints results even if card was removed mid-scan; needs context/cancellation
-- [ ] Better error messages for common failures (permissions, full disk, network paths)
+- [ ] Single-key input (raw terminal mode, no Enter required)
+- [ ] Startup under 100ms
+- [ ] Estimated time remaining during copy
+- [ ] Copy Selects mode (`[s]` — starred files only)
+- [ ] Show current filename during copy (deferred to renaming milestone)
 
 ---
 
 ## Code Cleanup
 
-- [ ] Split `main.go` (643 lines) — extract display/prompt/UI logic into separate package
+- [ ] Split `main.go` (~900 lines) — extract display/prompt/UI logic into separate package
 - [ ] Drop `app.printf()` method — use explicit `fmt.Printf` + `a.logf` instead
 - [ ] Review `OUTPUT.md` aspirational features vs reality — trim or mark as future
 

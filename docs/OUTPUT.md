@@ -3,9 +3,10 @@
 ## Startup
 
 ```
-[2026-03-11 21:15:32] Starting CardBot 0.1.5...
-[2026-03-11 21:15:32] Copy location is set to ~/Pictures/CardBot
-[2026-03-11 21:15:32] Scanning for memory cards...
+[2026-03-12 12:15:32] Starting CardBot 0.1.6...
+[2026-03-12 12:15:32] Copy location is set to ~/Pictures/CardBot
+[2026-03-12 12:15:32] File renaming is set to Original
+[2026-03-12 12:15:32] Scanning for memory cards...
 ```
 
 ## First Run (No Config)
@@ -19,20 +20,20 @@ Where should CardBot copy your work?
 
 Destination: /Users/user/Pictures/CardBot
 
-[2026-03-11 21:15:32] Starting CardBot 0.1.5...
-[2026-03-11 21:15:32] Copy location is set to ~/Pictures/CardBot
-[2026-03-11 21:15:32] Scanning for memory cards...
+[2026-03-12 12:15:32] Starting CardBot 0.1.6...
+[2026-03-12 12:15:32] Copy location is set to ~/Pictures/CardBot
+[2026-03-12 12:15:32] Scanning for memory cards...
 ```
 
 ## Card Detected (New)
 
 ```
-[2026-03-11 21:15:32] Scanning for memory cards...card found.
-[2026-03-11 21:15:33] Scanning /Volumes/NIKON Z 9  ... 3051 files ✓
-[2026-03-11 21:15:33] Scan completed in 0 seconds
+[2026-03-12 12:15:32] Scanning for memory cards...card found.
+[2026-03-12 12:15:33] Scanning /Volumes/NIKON Z 9  ... 3051 files ✓
+[2026-03-12 12:15:33] Scan completed in 0 seconds
 
   Status:   New
-  Path:     /Volumes/NIKON Z 9  
+  Path:     /Volumes/NIKON Z 9
   Storage:  96.4 GB / 476.9 GB (20%)
   Camera:   Nikon Z 9
   Starred:  1
@@ -42,33 +43,55 @@ Destination: /Users/user/Pictures/CardBot
 
   Total:    3048 photos, 0 videos, 96.0 GB
 ────────────────────────────────────────
-[a] Copy All  [e] Eject  [c] Cancel  >
+[a] Copy All  [e] Eject  [x] Exit  [?]  >
 ```
 
 ## Card Detected (Previously Copied)
 
 ```
-  Status:   Copied on 2026-03-11 21:31
-  Path:     /Volumes/NIKON Z 9  
+  Status:   Copied on 2026-03-12 12:31
+  Path:     /Volumes/NIKON Z 9
   Storage:  96.4 GB / 476.9 GB (20%)
   Camera:   Nikon Z 9
   ...
 ────────────────────────────────────────
-[a] Copy All  [e] Eject  [c] Cancel  >
+[a] Copy All  [e] Eject  [x] Exit  [?]  >
+```
+
+## Card Invalid (No DCIM)
+
+```
+[2026-03-12 12:15:33] Card is invalid (no DCIM found)
+
+  Status:   New
+  Path:     /Volumes/UNTITLED
+  Storage:  1.2 GB / 32.0 GB (3%)
+  Camera:   Unknown
+  Content:  (no DCIM — not a camera card)
+────────────────────────────────────────
+[e] Eject  [x] Exit  [?]  >
 ```
 
 ## Copy Progress
 
 ```
-[a] Copy All  [e] Eject  [c] Cancel  > a
+[a] Copy All  [e] Eject  [x] Exit  [?]  > a
 
-[2026-03-11 21:15:35] Copying all files to ~/Pictures/CardBot
-[2026-03-11 21:15:40] Copying... 1247/3051 files  48.2 GB/96.4 GB (50%)
+[2026-03-12 12:15:35] Copying all files to ~/Pictures/CardBot
+[2026-03-12 12:15:35] Press [\] to cancel
+[2026-03-12 12:15:40] Copying... 1247/3051 files  48.2 GB/96.4 GB (50%)
 ...
-[2026-03-11 21:22:18] Copy complete ✓
-[2026-03-11 21:22:18] 3051 files, 96.0 GB copied in 8m32s (188.4 MB/s)
+[2026-03-12 12:22:18] Copy complete ✓
+[2026-03-12 12:22:18] 3051 files, 96.0 GB copied in 8m32s (188.4 MB/s)
 
-[a] Copy All  [e] Eject  [c] Cancel  >
+[e] Eject  [x] Done  [?]  >
+```
+
+## Copy Cancelled
+
+```
+[2026-03-12 12:18:05] Copy cancelled — 1247 files copied.
+[a] Copy All  [e] Eject  [x] Exit  [?]  >
 ```
 
 ## Destination Structure
@@ -95,20 +118,20 @@ Files are grouped by date, preserving original folder structure:
 ## Eject
 
 ```
-[a] Copy All  [e] Eject  [c] Cancel  > e
+[a] Copy All  [e] Eject  [x] Exit  [?]  > e
 Ejecting NIKON Z 9  ...
 
-[2026-03-11 21:20:15] Card ejected: /Volumes/NIKON Z 9  
+[2026-03-12 12:20:15] Card ejected: /Volumes/NIKON Z 9
 
-[2026-03-11 21:20:18] Scanning for memory cards...
+[2026-03-12 12:20:18] Scanning for memory cards...
 ```
 
 ## Card Removal (Unexpected)
 
 ```
-[2026-03-11 21:20:15] Card removed: /Volumes/NIKON Z 9  
+[2026-03-12 12:20:15] Card removed: /Volumes/NIKON Z 9
 
-[2026-03-11 21:20:18] Scanning for memory cards...
+[2026-03-12 12:20:18] Scanning for memory cards...
 ```
 
 ## Queue
@@ -116,7 +139,7 @@ Ejecting NIKON Z 9  ...
 When multiple cards are inserted:
 
 ```
-[2026-03-11 21:15:33] Nikon detected (1 card in queue)
+[2026-03-12 12:15:33] Nikon detected (1 card in queue)
 ```
 
 Queue is processed in insertion order. The queue count appears when additional cards are waiting.
@@ -125,16 +148,19 @@ Queue is processed in insertion order. The queue count appears when additional c
 
 | Key | Action |
 |-----|--------|
-| `a` + Enter | Copy all files to destination |
-| `e` + Enter | Eject the card |
-| `c` + Enter | Cancel / dismiss card |
+| `a` | Copy all files to destination |
+| `s` | Copy starred/picked files only (coming soon) |
+| `e` | Eject the card |
+| `x` | Exit — skip this card, move to next |
+| `?` | Show help with all commands |
+| `\` | Cancel copy in progress |
 
 ### Hidden Commands
 
 | Key | Action |
 |-----|--------|
-| `i` + Enter | Show card hardware info (device, model, serial, firmware) |
-| `t` + Enter | Run 256MB speed test (sequential write + read) |
+| `i` | Show card hardware info (device, model, serial, firmware) |
+| `t` | Run 256MB speed test (sequential write + read) |
 
 ## Content Layout
 

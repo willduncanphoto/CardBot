@@ -13,7 +13,7 @@ Work items grouped by milestone.
 - [x] DCIM folder detection
 - [x] Brand guess from folder names
 - [x] Basic display (path, storage, brand)
-- [x] `[e] Eject` and `[c] Cancel` actions
+- [x] `[e] Eject` and `[x] Exit` actions
 - [x] Card queue for multiple cards
 - [x] Graceful shutdown
 
@@ -69,7 +69,7 @@ Work items grouped by milestone.
 - [x] "Copied on" status on re-insert
 - [x] Destination write probe on first creation
 - [x] Dry-run aware (no side effects)
-- [x] Post-copy prompt: `[e] Eject  [c] Done`
+- [x] Post-copy prompt: `[e] Eject  [x] Done`
 - [x] File collision skip (same size = skip)
 - [x] Color output respects `config.output.color`
 - [x] Input drain after blocking operations (copy, speed test)
@@ -83,23 +83,33 @@ Work items grouped by milestone.
 - [x] Stale `lastResult` cleared on card removal
 - [x] Test suite: 81 tests across 6 packages
 
+### 0.1.6 — Copy Robustness & UX
+- [x] Cancel during copy (`[\]` key)
+- [x] Card removal mid-copy — detected and handled gracefully
+- [x] Ctrl+C during copy — clean shutdown
+- [x] Disk space preflight check
+- [x] Read-only card warnings
+- [x] Output mutex for concurrent progress/scan output
+- [x] Path traversal guard on copy destinations
+- [x] File handle leak fix (named return for close errors)
+- [x] Goroutine leak fix (input reader shutdown)
+- [x] Invalid card handling (no DCIM → friendly message, eject/exit only)
+- [x] Help command (`[?]`) with full key reference
+- [x] Unknown input feedback
+- [x] Friendly error messages (disk full, permission denied, I/O errors)
+- [x] Key remapping: `x` = exit, `\` = cancel copy, `s` = selects stub
+- [x] Test suite: 97 tests across 6 packages, all passing with `-race`
+
 ---
 
 ## Upcoming
 
-### 0.1.6 — Copy Robustness
-- [ ] Handle card removed during copy
-- [ ] Handle destination disk full
-- [ ] Cancel copy in progress (with cleanup)
-- [ ] Handle read-only cards (warn before copy)
-- [ ] Output mutex for concurrent progress/scan output
-- [ ] Better error messages
-
 ### 0.1.7 — Polish
-- [ ] Startup <100ms
-- [ ] Single-key input (raw terminal mode)
+- [ ] Single-key input (raw terminal mode, no Enter required)
+- [ ] Startup under 100ms
 - [ ] Estimated time remaining during copy
-- [ ] Performance benchmarks
+- [ ] Copy Selects mode (starred files only)
+- [ ] Show current filename during copy (deferred to renaming milestone)
 
 ---
 
@@ -108,7 +118,6 @@ Work items grouped by milestone.
 - Windows support
 - Linux testing (Ubuntu, Fedora, Debian), mount point docs, stable build
 - File renaming on copy (date-based, camera+date, sequence numbering)
-- `[s] Selects` copy mode (starred only)
 - `[v] Videos` / `[p] Photos` copy modes
 - Incremental copy (only new/changed files)
 - Resume interrupted copies
@@ -118,6 +127,3 @@ Work items grouped by milestone.
 - JSON output mode
 - Toggle flat vs preserve DCIM structure
 - Auto-update: check GitHub Releases for new version at startup, `--update` flag to self-upgrade
-  - Prereqs: GoReleaser for multi-platform builds, checksums, `-ldflags` version injection
-  - Consider `go-selfupdate` library or DIY (~200 lines for single binary)
-  - UX: non-blocking check once/day, notify user, don't force
