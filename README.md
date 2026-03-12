@@ -248,11 +248,11 @@ cardbot/
 
 ## License
 
-TBD — will be added before public release (0.1.9)
+TBD — will be added before public release
 
 ## Built With AI
 
-CardBot was built with the help of human-guided AI coding models. Special thanks to **[Pi](https://shittycodingagent.ai)** — a terminal-based coding agent.
+CardBot was built with the help of human guided AI coding models. No way in hell I could do this shit alone. Special thanks to **[Pi](https://shittycodingagent.ai)** — a terminal-based coding agent.
 
 - Website: [shittycodingagent.ai](https://shittycodingagent.ai)
 - GitHub: [github.com/badlogic/pi-mono](https://github.com/badlogic/pi-mono)
