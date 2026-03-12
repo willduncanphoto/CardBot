@@ -30,6 +30,13 @@ Detection, analysis, EXIF, config, UI polish, and basic copy complete.
 
 ---
 
+## Future Features
+
+- [ ] **File renaming** — configurable rename patterns on copy (e.g. date-based,
+      camera+date, sequence numbering). Current behavior: keep original filenames.
+
+---
+
 ## Speed Test — Future Improvements
 
 Current implementation is a synthetic 256MB sequential read/write benchmark.

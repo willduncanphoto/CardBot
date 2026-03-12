@@ -108,6 +108,7 @@ Work items grouped by milestone.
 ## Later
 
 - Windows support
+- File renaming on copy (date-based, camera+date, sequence numbering)
 - `[s] Selects` copy mode (starred only)
 - `[v] Videos` / `[p] Photos` copy modes
 - Incremental copy (only new/changed files)

@@ -163,6 +163,8 @@ func main() {
 	time.Sleep(150 * time.Millisecond)
 	a.printf("[%s] Copy location is set to %s\n", ts(), cfg.Destination.Path)
 	time.Sleep(150 * time.Millisecond)
+	a.printf("[%s] File renaming is set to Original\n", ts())
+	time.Sleep(150 * time.Millisecond)
 
 	if a.dryRun {
 		a.printf("[%s] Dry-run mode — no files will be copied\n", ts())
