@@ -25,7 +25,7 @@ import (
 	"github.com/illwill/cardbot/internal/ui"
 )
 
-const version = "0.1.6"
+const version = "0.1.7"
 
 // UX delays — remove in 0.4.0 when real startup and analysis timings replace them.
 const (

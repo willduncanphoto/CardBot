@@ -1,17 +1,10 @@
 # CardBot — TODO
 
-## Current Version: 0.1.6
+## Current Version: 0.1.7
 
-Detection, analysis, EXIF, config, UI polish, copy with robustness, and UX improvements complete.
+Detection, analysis, EXIF, config, UI polish, copy with robustness, UX improvements, and critical bug fixes complete.
 
 **Target: 0.2.0 — Daily Driver.** The version you hand to another photographer and say "try this."
-
----
-
-## 0.1.7 — Polish (Next Up)
-
-- [ ] Estimated time remaining during copy
-- [ ] Show current filename during copy (deferred to renaming milestone)
 
 ---
 
@@ -19,6 +12,8 @@ Detection, analysis, EXIF, config, UI polish, copy with robustness, and UX impro
 
 These are "nice to have" features that aren't on the immediate roadmap:
 
+- Estimated time remaining during copy
+- Show current filename during copy (deferred to renaming milestone)
 - Single-key input (raw terminal mode, no Enter required)
 - Auto-update: check GitHub Releases for new version at startup
 - Network destination support
@@ -63,7 +58,7 @@ Questions to answer before implementation:
 - [ ] Move `FormatBytes` to unguarded file (currently darwin/linux only via build tag)
 - [ ] Extract `printCardHeader` helper — shared between `printCardInfo` and `printInvalidCardInfo`
 - [ ] Remove startup `time.Sleep` calls (3 × 150ms) — conflicts with 0.1.7 startup goal
-- [ ] Add `df.Sync()` before close in `copyFile` — correctness on Linux removable media
+- [ ] Add `df.Sync()` before close in `copyFile` — ~~correctness on Linux removable media~~ **Done in 0.1.7**
 - [ ] Standardize error handling — `friendlyErr` everywhere user-facing, raw `%v` log only
 
 ---

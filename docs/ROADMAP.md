@@ -103,24 +103,30 @@ Work items grouped by milestone.
 
 ---
 
-## Upcoming
+## 0.1.7 — Bug Fixes & Data Integrity ✓
+- [x] Fix stale `cardInvalid` on card removal (queued card inherited wrong state)
+- [x] Fix event loop blocking during removal delay (2s unresponsive)
+- [x] Remove dead `isCurrentCard` check after analyze error
+- [x] Add `df.Sync()` in `copyFile` for data integrity on removable media
 
-### 0.1.7 — Polish
-- [ ] Estimated time remaining during copy
-- [ ] Show current filename during copy (deferred to renaming milestone)
+---
+
+## Upcoming
 
 ---
 
 ## Wishlist
 
-These are "nice to have" features that aren't on the immediate roadmap:
-
+- Estimated time remaining during copy
+- Show current filename during copy (deferred to renaming milestone)
 - Single-key input (raw terminal mode, no Enter required)
 - Auto-update: check GitHub Releases for new version at startup, `--update` flag
 - Network destination support
 - Windows support
 - JSON output mode for scripting
 - Star rating filters: `[2]` Copy 2★+, `[3]` Copy 3★+, `[4]` Copy 4★+, `[5]` Copy 5★ only
+
+---
 
 ### 0.1.8 — Selective Copy
 - [ ] `[s]` Copy Selects — copy starred/picked files only (XMP rating > 0)
@@ -136,7 +142,6 @@ These are "nice to have" features that aren't on the immediate roadmap:
 - [ ] Remove startup `time.Sleep` calls
 - [ ] Standardize error handling — `friendlyErr` everywhere user-facing
 - [ ] Move `FormatBytes` to platform-agnostic file
-- [ ] Add `df.Sync()` before close in `copyFile`
 - [ ] Test coverage pass — target 80%+ across all packages
 - [ ] `go build -ldflags="-s -w"` for binary size reduction
 
