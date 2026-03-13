@@ -14,6 +14,7 @@ func TestBrandColor_KnownBrands(t *testing.T) {
 		{"Fujifilm", "\033[32m"},
 		{"Panasonic", "\033[34m"},
 		{"Olympus", "\033[36m"},
+		{"OM System", "\033[36m"},
 	}
 	for _, tt := range tests {
 		got := BrandColor(tt.brand)

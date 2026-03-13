@@ -99,17 +99,62 @@ Work items grouped by milestone.
 - [x] Copy Selects, Copy Photos, Copy Videos shown in help (strikethrough — coming soon)
 - [x] Test suite: 97 tests across 6 packages, all passing with `-race`
 
----
-
-## 0.1.7 — Bug Fixes & Data Integrity ✓
+### 0.1.7 — Bug Fixes & Data Integrity
 - [x] Fix stale `cardInvalid` on card removal (queued card inherited wrong state)
-- [x] Fix event loop blocking during removal delay (2s unresponsive)
+- [x] Fix event loop blocking during removal delay (runs in goroutine now)
 - [x] Remove dead `isCurrentCard` check after analyze error
 - [x] Add `df.Sync()` in `copyFile` for data integrity on removable media
+- [x] Remove duplicate `fmtBytes` from copy package → uses `detect.FormatBytes`
+- [x] Startup animation: dots appear one at a time over ~1.8s
+- [x] Scanning spinner: classic `| / - \` with clean goroutine lifecycle
+- [x] Timestamps: ISO format with T separator everywhere
+- [x] Improved `readExif` Make/Model dedup (handles "NIKON CORPORATION" + "NIKON Z 9")
+- [x] Updated 7 dependencies to latest
+- [x] go.mod bumped to go 1.25.0
+- [x] Test suite: 100 tests across 8 packages, all passing with `-race`
 
 ---
 
 ## Upcoming
+
+### 0.1.8 — Selective Copy
+- [ ] `[s]` Copy Selects — copy starred/picked files only (XMP rating > 0)
+- [ ] `[p]` Copy Photos — copy photo files only (RAW + JPEG, no video)
+- [ ] `[v]` Copy Videos — copy video files only (MOV, MP4, MXF, etc.)
+- [ ] Dotfile tracks copy mode per operation
+- [ ] Status line reflects partial copy
+- [ ] Re-copy guard per mode
+- [ ] Disk space preflight scoped to selected subset
+
+### 0.1.9 — Code Health
+- [ ] Split `main.go` into `app.go`, `display.go`, `copy_cmd.go`
+- [ ] Extract `printCardHeader` helper (DRY)
+- [ ] Add `context.Context` to `displayCard` and analyzer
+- [ ] Log walk errors instead of silently swallowing
+- [ ] Standardize `friendlyErr` for all user-facing errors
+- [ ] Validate destination path on config load or copy start
+- [ ] Move `FormatBytes` to platform-agnostic file
+- [ ] Remove 500ms `displayCard` delay
+- [ ] Test coverage pass — target 80%+ across testable packages
+
+### 0.2.0 — Daily Driver
+- [ ] All 0.1.x items complete
+- [ ] Single-key input (raw terminal mode, no Enter required)
+- [ ] Selective copy fully implemented with correct status tracking
+- [ ] Partial copy state in dotfile — multi-mode copy history
+- [ ] No known crashes or data loss scenarios
+- [ ] Tested on personal gear across multiple shooting days
+- [ ] Feedback from at least one other photographer
+- [ ] README reflects actual current behavior
+- [ ] First public-facing release candidate
+
+### 0.3.0 — Linux Support
+- [ ] Linux detection (polling-based, /run/media, /media, /mnt)
+- [ ] Linux hardware info (sysfs, CID parsing for direct SD slots)
+- [ ] Linux speed test support
+- [ ] Linux eject (udisksctl / umount)
+- [ ] Real-world testing (Ubuntu, Fedora, Debian)
+- [ ] Stable build and CI
 
 ---
 
@@ -118,73 +163,11 @@ Work items grouped by milestone.
 - Estimated time remaining during copy
 - Show current filename during copy (deferred to renaming milestone)
 - Per-file copy logging (forensic/recovery audit trail)
-- Single-key input (raw terminal mode, no Enter required)
-- Auto-update: check GitHub Releases for new version at startup, `--update` flag
+- Auto-update: check GitHub Releases for new version at startup
 - Network destination support
 - Windows support
 - JSON output mode for scripting
 - Star rating filters: `[2]` Copy 2★+, `[3]` Copy 3★+, `[4]` Copy 4★+, `[5]` Copy 5★ only
-
----
-
-### 0.1.8 — Selective Copy
-- [ ] `[s]` Copy Selects — copy starred/picked files only (XMP rating > 0)
-- [ ] `[p]` Copy Photos — copy photo files only (RAW + JPEG, no video)
-- [ ] `[v]` Copy Videos — copy video files only (MOV, MP4, MXF, etc.)
-- [ ] Dotfile tracks copy mode per operation (`"mode": "selects"`)
-- [ ] Status line reflects partial copy (`Selects copied on ...`)
-- [ ] Re-copy guard per mode (don't skip if previous copy was a different mode)
-
-### 0.1.9 — Code Health
-- [ ] Split `main.go` into `app.go`, `display.go`, `copy_cmd.go`
-- [ ] Add `context.Context` to `displayCard` and analyzer
-- [ ] Remove startup `time.Sleep` calls
-- [ ] Standardize error handling — `friendlyErr` everywhere user-facing
-- [ ] Move `FormatBytes` to platform-agnostic file
-- [ ] Test coverage pass — target 80%+ across all packages
-- [ ] `go build -ldflags="-s -w"` for binary size reduction
-
----
-
-### 0.2.0 — Daily Driver
-**The "I am willing to use this in my workflow" release.**
-
-Everything from 0.1.x is solid, tested, and feels intentional. This is the version
-you hand to another photographer and say "try this."
-
-- [ ] All 0.1.7, 0.1.8, 0.1.9 items complete
-- [ ] Single-key input working reliably on macOS
-- [ ] Selective copy (`[s]`, `[p]`, `[v]`) fully implemented with correct status tracking
-- [ ] Partial copy state in dotfile — multi-mode copy history
-- [ ] No known crashes or data loss scenarios
-- [ ] Tested on personal gear across multiple shooting days
-- [ ] Feedback from at least one other photographer on real-world use
-- [ ] README reflects actual current behaviour (no aspirational features listed as present)
-- [ ] First public-facing release candidate
-
----
-
----
-
-### 0.3.0 — Linux Support
-
-**Full Linux platform support — detection, copy, hardware info, speed test.**
-
-- [ ] Linux detection (polling-based, /run/media, /media, /mnt)
-- [ ] Linux hardware info (sysfs, CID parsing for direct SD slots)
-- [ ] Linux speed test support
-- [ ] Linux eject (udisksctl / umount)
-- [ ] Real-world testing (Ubuntu, Fedora, Debian)
-- [ ] Mount point documentation
-- [ ] Stable Linux build and CI
-
----
-
-## Later
-
 - File renaming on copy (date-based, camera+date, sequence numbering)
 - Resume interrupted copies
 - Video metadata (duration, resolution)
-- Windows support
-- TOML/YAML config
-- Toggle flat vs preserve DCIM structure

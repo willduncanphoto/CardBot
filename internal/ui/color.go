@@ -14,7 +14,7 @@ func BrandColor(brand string) string {
 		return "\033[32m" // Green
 	case "Panasonic":
 		return "\033[34m" // Blue
-	case "Olympus":
+	case "Olympus", "OM System":
 		return "\033[36m" // Cyan
 	default:
 		return "\033[37m" // White

@@ -245,9 +245,7 @@ func main() {
 	fmt.Println()
 
 	a.printf("[%s] Copy path %s\n", ts(), config.ContractPath(cfg.Destination.Path))
-	time.Sleep(600 * time.Millisecond)
 	a.printf("[%s] Keep original filenames\n", ts())
-	time.Sleep(600 * time.Millisecond)
 
 	if a.dryRun {
 		a.printf("[%s] Dry-run mode — no files will be copied\n", ts())
