@@ -15,7 +15,7 @@ import (
 
 const (
 	updateCheckInterval = 24 * time.Hour
-	updateCheckTimeout  = 2 * time.Second
+	updateCheckTimeout  = 5 * time.Second
 	selfUpdateTimeout   = 60 * time.Second
 )
 
