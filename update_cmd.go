@@ -56,7 +56,7 @@ func runSelfUpdate() int {
 		return 1
 	}
 
-	fmt.Printf("[%s] Checking for updates...\n", ts())
+	fmt.Printf("[%s] Checking for updates…\n", ts())
 	ctx, cancel := context.WithTimeout(context.Background(), selfUpdateTimeout)
 	defer cancel()
 
