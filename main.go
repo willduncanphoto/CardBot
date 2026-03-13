@@ -238,7 +238,7 @@ func main() {
 	if a.logger != nil {
 		a.logger.Raw(fmt.Sprintf("[%s] Starting CardBot %s...", ts(), version))
 	}
-	spinner := []string{"|", "/", "-", "\\"}
+	spinner := []string{" |", " /", " -", " \\"}
 	for i := 0; i < 8; i++ {
 		time.Sleep(125 * time.Millisecond)
 		fmt.Printf("\b%s", spinner[i%4])
