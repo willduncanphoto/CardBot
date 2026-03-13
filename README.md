@@ -239,7 +239,7 @@ Run `cardbot --setup` to change the destination. Run `cardbot --reset` to clear 
 - File renaming on copy (date-based, camera+date, sequence)
 - Resume interrupted copies
 - ETA during copy
-- Auto-update check
+- Auto-update flow (see `docs/AUTO-UPDATE.md`)
 - Linux support
 
 ## Project Structure
