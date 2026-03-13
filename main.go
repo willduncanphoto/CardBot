@@ -71,7 +71,7 @@ func (a *app) drainInput() {
 
 // spinnerFrames are the braille animation frames for the scanning spinner.
 // spinnerFrames are the classic spinner animation frames.
-var spinnerFrames = []string{"/", "|", "-", "\\"}
+var spinnerFrames = []string{" /", " |", " -", " \\"}
 
 // startSpinner starts the background spinner animation on the current line.
 func (a *app) startSpinner() {
