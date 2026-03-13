@@ -207,7 +207,6 @@ Run `cardbot --setup` to change the destination. Run `cardbot --reset` to clear 
 - `[v]` Copy Videos — skip photos
 - File renaming on copy (date-based, camera+date, sequence)
 - Resume interrupted copies
-- Single-key input (no Enter required)
 - ETA during copy
 - Auto-update check
 - Linux support (0.3.0)
