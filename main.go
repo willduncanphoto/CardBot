@@ -332,7 +332,7 @@ func (a *app) handleCardEvent(card *detect.Card) {
 	if a.currentCard == nil {
 		a.currentCard = card
 		a.stopSpinner()
-		fmt.Println("card found.")
+		fmt.Println("Card detected.")
 		a.logf("Card detected: %s", card.Path)
 		cardPath := card.Path // capture by value before releasing lock
 		go func() {
