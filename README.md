@@ -45,6 +45,9 @@ CardBot generates a concise overview of your memory card and provides modern cop
 
 Download the latest release for your Mac (Apple Silicon or Intel):
 
+> Note: release binaries run fine without Xcode, but are currently built with `CGO_ENABLED=0`, so card detection uses polling fallback (~1s) instead of native instant DiskArbitration callbacks.
+> Build from source with Xcode tools if you want native instant detection.
+
 ```bash
 # Download (Apple Silicon / M1/M2/M3)
 curl -LO https://github.com/willduncanphoto/CardBot/releases/latest/download/cardbot-darwin-arm64
