@@ -11,7 +11,7 @@ Complete sequence from launch to first card display:
 [2026-03-12T12:15:34] Copy location is set to ~/Pictures/CardBot
 [2026-03-12T12:15:34] File renaming is set to Original
 [2026-03-12T12:15:34] Scanning  |                  ← spinner animates: | / - \
-[2026-03-12T12:15:35] Card detected.               ← card inserted, spinner stops
+[2026-03-12T12:15:35] Card detected               ← card inserted, spinner stops
 [2026-03-12T12:15:35] Scanning /Volumes/NIKON Z 9  ... 3051 files ✓ (0s)
 
   Status:   New
@@ -55,7 +55,7 @@ Destination: /Users/user/Pictures/CardBot
 ## Card Detected (New)
 
 ```
-[2026-03-12T12:15:32] Card detected.
+[2026-03-12T12:15:32] Card detected
 [2026-03-12T12:15:33] Scanning /Volumes/NIKON Z 9  ... 3051 files ✓ (0s)
 
   Status:   New
