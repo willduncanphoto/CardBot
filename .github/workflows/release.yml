@@ -66,12 +66,14 @@ jobs:
           cd artifacts
           sha256sum cardbot-* > checksums.txt
 
+      - name: Show release files
+        run: ls -lah artifacts
+
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          files: |
-            artifacts/cardbot-*
-            artifacts/checksums.txt
+          files: artifacts/*
           generate_release_notes: true
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
