@@ -130,11 +130,11 @@ func copyBlockReason(mode string, invalid, copiedAll, copiedMode bool, result *a
 func promptText(invalid, copiedAll bool) string {
 	switch {
 	case invalid:
-		return "[e] Eject  [x] Exit  [?]  > "
+		return "[e] Eject  [x] Exit  [?] Help  > "
 	case copiedAll:
-		return "[e] Eject  [x] Done  [?]  > "
+		return "[e] Eject  [x] Done  [?] Help  > "
 	default:
-		return "[a] Copy All  [e] Eject  [x] Exit  [?]  > "
+		return "[a] Copy All  [e] Eject  [x] Exit  [?] Help  > "
 	}
 }
 

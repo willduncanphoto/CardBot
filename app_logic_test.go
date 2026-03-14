@@ -102,13 +102,13 @@ func TestCopyBlockReason(t *testing.T) {
 func TestPromptText(t *testing.T) {
 	t.Parallel()
 
-	if got := promptText(true, false); got != "[e] Eject  [x] Exit  [?]  > " {
+	if got := promptText(true, false); got != "[e] Eject  [x] Exit  [?] Help  > " {
 		t.Errorf("invalid prompt = %q", got)
 	}
-	if got := promptText(false, true); got != "[e] Eject  [x] Done  [?]  > " {
+	if got := promptText(false, true); got != "[e] Eject  [x] Done  [?] Help  > " {
 		t.Errorf("copied prompt = %q", got)
 	}
-	if got := promptText(false, false); got != "[a] Copy All  [e] Eject  [x] Exit  [?]  > " {
+	if got := promptText(false, false); got != "[a] Copy All  [e] Eject  [x] Exit  [?] Help  > " {
 		t.Errorf("default prompt = %q", got)
 	}
 }
