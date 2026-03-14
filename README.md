@@ -2,13 +2,6 @@
 
 A CLI tool for camera memory cards.
 
-## DISCLAIMER: Built with AI Coding Tools
-
-CardBot was built with the help of AI coding models and many open source projects. There is no way that I could build this alone. A special thanks goes out to **[Pi](https://shittycodingagent.ai)** — a terminal-based coding agent.
-
-- Website: [shittycodingagent.ai](https://shittycodingagent.ai)
-- GitHub: [github.com/badlogic/pi-mono](https://github.com/badlogic/pi-mono)
-
 ## What CardBot Does
 
 CardBot generates a concise overview of your memory card and provides modern copy tools. It will also rename your files one day.
@@ -350,3 +343,10 @@ MIT License — see [LICENSE](LICENSE) for details.
 - **CID on Linux:** The SD Card Identification register (manufacturer ID, serial, manufacturing date) is only accessible with direct SD card slots. USB readers hide it.
 - **Hardware size vs filesystem size:** macOS reports the card's raw physical capacity alongside the formatted filesystem size — this is why a "512GB" card shows ~477GB usable.
 - **Speed test:** CardBot includes a hidden `[t]` command that runs a 256MB sequential read/write benchmark on the card. Results are synthetic — read speeds in particular may be inflated by the OS page cache.
+
+## DISCLAIMER: Built with AI Coding Tools
+
+CardBot was built with the help of AI coding models and many open source projects. There is no way that I could build this alone. A special thanks goes out to **[Pi](https://shittycodingagent.ai)** — a terminal-based coding agent.
+
+- Website: [shittycodingagent.ai](https://shittycodingagent.ai)
+- GitHub: [github.com/badlogic/pi-mono](https://github.com/badlogic/pi-mono)
