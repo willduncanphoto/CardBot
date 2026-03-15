@@ -76,6 +76,7 @@ func (a *app) copyFiltered(card *detect.Card, mode string) {
 		BufferKB:      a.cfg.Advanced.BufferSizeKB,
 		AnalyzeResult: analyzeResult,
 		Filter:        filter,
+		NamingMode:    a.cfg.Naming.Mode,
 	}
 
 	type copyOutcome struct {

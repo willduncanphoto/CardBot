@@ -160,6 +160,9 @@ func TestAnalyze_EmptyCard(t *testing.T) {
 	if result.FileDates == nil {
 		t.Error("FileDates should be non-nil (empty map, not nil)")
 	}
+	if result.FileDateTimes == nil {
+		t.Error("FileDateTimes should be non-nil (empty map, not nil)")
+	}
 }
 
 func TestAnalyze_NoDCIM(t *testing.T) {
@@ -226,6 +229,9 @@ func TestAnalyze_FileDates(t *testing.T) {
 	if len(result.FileDates) != 2 {
 		t.Fatalf("len(FileDates) = %d, want 2", len(result.FileDates))
 	}
+	if len(result.FileDateTimes) != 2 {
+		t.Fatalf("len(FileDateTimes) = %d, want 2", len(result.FileDateTimes))
+	}
 
 	// Without real EXIF data, dates should fall back to mtime.
 	want := map[string]string{
@@ -240,6 +246,9 @@ func TestAnalyze_FileDates(t *testing.T) {
 		}
 		if got != wantDate {
 			t.Errorf("FileDates[%q] = %q, want %q", path, got, wantDate)
+		}
+		if ts, ok := result.FileDateTimes[path]; !ok || ts.IsZero() {
+			t.Errorf("FileDateTimes missing or zero for %q", path)
 		}
 	}
 }

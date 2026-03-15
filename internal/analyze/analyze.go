@@ -64,18 +64,19 @@ type DateGroup struct {
 
 // Result contains analysis data for a memory card.
 type Result struct {
-	Groups      []DateGroup       // Newest first
-	FileDates   map[string]string // Per-file date map: relative path from DCIM → "YYYY-MM-DD"
-	FileRatings map[string]int    // Per-file rating: relative path from DCIM → star rating (1-5)
-	TotalSize   int64             // Sum of all file sizes
-	FileCount   int               // Total number of files
-	PhotoSize   int64             // Total bytes of photo files
-	PhotoCount  int               // Number of photo files
-	VideoSize   int64             // Total bytes of video files
-	VideoCount  int               // Number of video files
-	Gear        string            // Camera make + model (e.g. "Nikon Z 9"), empty if unknown
-	Starred     int               // Count of files with star rating > 0
-	Warnings    []string          // Non-fatal errors encountered during scan (permission, I/O)
+	Groups        []DateGroup          // Newest first
+	FileDates     map[string]string    // Per-file date map: relative path from DCIM → "YYYY-MM-DD"
+	FileDateTimes map[string]time.Time // Per-file capture time: relative path from DCIM → timestamp
+	FileRatings   map[string]int       // Per-file rating: relative path from DCIM → star rating (1-5)
+	TotalSize     int64                // Sum of all file sizes
+	FileCount     int                  // Total number of files
+	PhotoSize     int64                // Total bytes of photo files
+	PhotoCount    int                  // Number of photo files
+	VideoSize     int64                // Total bytes of video files
+	VideoCount    int                  // Number of video files
+	Gear          string               // Camera make + model (e.g. "Nikon Z 9"), empty if unknown
+	Starred       int                  // Count of files with star rating > 0
+	Warnings      []string             // Non-fatal errors encountered during scan (permission, I/O)
 }
 
 // videoExts lists extensions classified as video.
@@ -298,6 +299,7 @@ loop:
 	// --- Phase 3: Merge ---
 	groups := make(map[string]*dateAccumulator)
 	fileDates := make(map[string]string, len(files))
+	fileDateTimes := make(map[string]time.Time, len(files))
 	fileRatings := make(map[string]int)
 	var totalSize, photoSize, videoSize int64
 	var photoCount, videoCount, starred int
@@ -306,12 +308,14 @@ loop:
 	for i := range files {
 		f := &files[i]
 
-		date := f.mtime.Format("2006-01-02")
+		captureTime := f.mtime
+		date := captureTime.Format("2006-01-02")
 
 		if supportedExif[f.ext] {
 			r := &exifResults[i]
 			if r.ok {
 				if !r.date.IsZero() {
+					captureTime = r.date
 					date = r.date.Format("2006-01-02")
 				}
 				if gear == "" && r.gear != "" {
@@ -325,6 +329,7 @@ loop:
 		}
 
 		fileDates[f.relPath] = date
+		fileDateTimes[f.relPath] = captureTime
 
 		acc, ok := groups[date]
 		if !ok {
@@ -346,18 +351,19 @@ loop:
 	}
 
 	return &Result{
-		Groups:      buildGroups(groups),
-		FileDates:   fileDates,
-		FileRatings: fileRatings,
-		TotalSize:   totalSize,
-		FileCount:   totalFiles,
-		PhotoSize:   photoSize,
-		PhotoCount:  photoCount,
-		VideoSize:   videoSize,
-		VideoCount:  videoCount,
-		Gear:        gear,
-		Starred:     starred,
-		Warnings:    warnings,
+		Groups:        buildGroups(groups),
+		FileDates:     fileDates,
+		FileDateTimes: fileDateTimes,
+		FileRatings:   fileRatings,
+		TotalSize:     totalSize,
+		FileCount:     totalFiles,
+		PhotoSize:     photoSize,
+		PhotoCount:    photoCount,
+		VideoSize:     videoSize,
+		VideoCount:    videoCount,
+		Gear:          gear,
+		Starred:       starred,
+		Warnings:      warnings,
 	}, nil
 }
 

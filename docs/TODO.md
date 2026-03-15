@@ -1,12 +1,29 @@
 # CardBot — TODO
 
-## Current Version: 0.1.9
+## Current Version: 0.3.0
 
-Detection, analysis, EXIF, config, UI polish, copy with robustness, UX improvements,
-bug fixes, and code health refactor complete. 100+ tests across 8 packages, all passing
-with `-race`.
+File renaming on copy. Transform cryptic camera filenames into meaningful,
+organized names using EXIF dates, camera IDs, and custom sequences.
 
-**0.2.0 — Testing.** Feature-complete for real-world validation. Time to plug in the Z9 and see what breaks.
+**0.2.x — Testing completed.** Self-update working, selective copy validated with real Z9 cards.
+
+---
+
+## 0.3.0 — File Renaming
+
+Rename files on copy with customizable templates. See [docs/030_plan.md](030_plan.md) for the full design spec.
+
+- [ ] Config-based renaming templates (`renaming` section in config)
+- [ ] Template variables: `{date}`, `{camera}`, `{seq}`, `{ext}`, `{original}`
+- [ ] `[r]` Rename settings — interactive template chooser
+- [ ] `[n]` Toggle renaming on/off for current session
+- [ ] Per-card sequence numbering (resets per card)
+- [ ] Global sequence numbering (persists across cards)
+- [ ] Date format options (YYYY-MM-DD, YYYYMMDD, etc.)
+- [ ] Collision handling: skip, overwrite, or add suffix
+- [ ] Preview mode: show rename mapping before copy
+- [ ] Dotfile v3: track original → renamed mapping for recovery
+- [ ] `[t]` during copy: show current filename (filename ticker)
 
 ---
 
@@ -99,7 +116,7 @@ All design decisions are documented in [SELECTIVE-COPY.md](SELECTIVE-COPY.md):
 
 ---
 
-## 0.2.0 — Testing
+## 0.2.0 — Testing (Complete)
 
 Everything from 0.1.x is ready for real-world validation.
 
@@ -109,16 +126,14 @@ Everything from 0.1.x is ready for real-world validation.
 - [x] No known crashes or data loss scenarios
 - [x] README reflects actual current behavior
 - [x] Safe updater flow (`cardbot self-update`) with checksum verification
+- [x] Tested with real Z9 cards
+- [x] Version bumped to 0.2.9 after updater fixes
 
-**Goals for this phase:**
-- Test with real Z9 cards
-- Identify friction points in the workflow
-- Fine-tune copy speeds, buffer sizes, progress feedback
-- Validate selective copy modes with actual star-rated files
+**Completed:** Real-world testing validated. Self-update working. Ready for 0.3.0.
 
 ---
 
-## 0.7.0 — Video Workflow Separation (Planned)
+## 0.4.0 — Video Workflow Separation (Planned)
 
 Photos and videos often need different post-processing workflows. This milestone separates video handling with its own destination and tracking.
 
@@ -134,13 +149,35 @@ Photos and videos often need different post-processing workflows. This milestone
 
 ---
 
+## 0.5.0 — Multi-Camera Collision Prevention
+
+When using timestamp-based renaming with multiple cameras, files can collide if two cameras shoot at the same second and generate the same sequence number:
+
+```
+Camera A Z9:  260314T143052_0001.NEF
+Camera B Z8:  260314T143052_0001.NEF  ← collision!
+```
+
+**Solution:** Add camera identifier prefix/suffix to distinguish sources.
+
+- [ ] Camera ID in rename template (`{camera}` variable)
+- [ ] Template: `{date}_{camera}_{seq}.{ext}` → `260314T143052_Z9_0001.NEF`
+- [ ] Camera ID extracted from EXIF (Model field, cleaned)
+- [ ] Short codes for common cameras (Z9, Z8, R5, A7IV, etc.)
+- [ ] Configurable camera aliases (user can override "NIKON Z 9" → "Z9-Backup")
+- [ ] Subfolder per camera option (alternative to prefix)
+
+**Use case:** Wedding with second shooter. Both Z9s shooting same moment. Timestamp+sequence alone collides. Camera prefix prevents overwrite.
+
+---
+
 ## Wishlist
 
 Not on the immediate roadmap. Nice-to-have for someday.
 
 - Linux support (detection, hardware info, speed test, eject)
 - Estimated time remaining during copy
-- Show current filename during copy (deferred to renaming milestone)
+- Show current filename during copy (now part of 0.3.0)
 - Per-file copy logging (forensic/recovery audit trail)
 - Single-key input (raw terminal mode, no Enter required)
 - Auto-update enhancements (signed releases, optional package-manager integration)
@@ -148,7 +185,6 @@ Not on the immediate roadmap. Nice-to-have for someday.
 - Windows support
 - JSON output mode for scripting
 - Star rating filters: `[2]` Copy 2★+, `[3]` Copy 3★+, `[4]` Copy 4★+, `[5]` Copy 5★ only
-- File renaming on copy (date-based, camera+date, sequence numbering)
 - Resume interrupted copies
 - Video metadata (duration, resolution)
 

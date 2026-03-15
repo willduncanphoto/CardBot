@@ -15,6 +15,9 @@ func TestDefaults(t *testing.T) {
 	if cfg.Destination.Path != "~/Pictures/CardBot" {
 		t.Errorf("Destination.Path = %q, want ~/Pictures/CardBot", cfg.Destination.Path)
 	}
+	if cfg.Naming.Mode != NamingOriginal {
+		t.Errorf("Naming.Mode = %q, want %q", cfg.Naming.Mode, NamingOriginal)
+	}
 	if cfg.Advanced.BufferSizeKB != 256 {
 		t.Errorf("BufferSizeKB = %d, want 256", cfg.Advanced.BufferSizeKB)
 	}
@@ -34,6 +37,7 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.json")
 	cfg := Defaults()
 	cfg.Destination.Path = "~/Photos/Test"
+	cfg.Naming.Mode = NamingTimestamp
 
 	if err := Save(cfg, path); err != nil {
 		t.Fatal(err)
@@ -48,6 +52,9 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	}
 	if loaded.Destination.Path != "~/Photos/Test" {
 		t.Errorf("Destination.Path = %q, want ~/Photos/Test", loaded.Destination.Path)
+	}
+	if loaded.Naming.Mode != NamingTimestamp {
+		t.Errorf("Naming.Mode = %q, want %q", loaded.Naming.Mode, NamingTimestamp)
 	}
 	if loaded.Schema != schemaVersion {
 		t.Errorf("Schema = %q, want %q", loaded.Schema, schemaVersion)
@@ -211,8 +218,51 @@ func TestLoad_PartialConfig(t *testing.T) {
 	if cfg.Output.Quiet != defaults.Output.Quiet {
 		t.Errorf("Quiet = %v, want %v (default)", cfg.Output.Quiet, defaults.Output.Quiet)
 	}
+	if cfg.Naming.Mode != defaults.Naming.Mode {
+		t.Errorf("Naming.Mode = %q, want %q (default)", cfg.Naming.Mode, defaults.Naming.Mode)
+	}
 	if cfg.Update.LastCheck != defaults.Update.LastCheck {
 		t.Errorf("Update.LastCheck = %q, want %q (default)", cfg.Update.LastCheck, defaults.Update.LastCheck)
+	}
+}
+
+func TestLoad_InvalidNamingMode(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(path, []byte(`{"$schema":"cardbot-config-v1","naming":{"mode":"banana"}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, warnings, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Naming.Mode != NamingOriginal {
+		t.Errorf("Naming.Mode = %q, want %q", cfg.Naming.Mode, NamingOriginal)
+	}
+	if len(warnings) == 0 {
+		t.Fatal("expected warning for invalid naming mode")
+	}
+}
+
+func TestNormalizeNamingMode(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{"", NamingOriginal},
+		{"original", NamingOriginal},
+		{"ORIGINAL", NamingOriginal},
+		{"timestamp", NamingTimestamp},
+		{" TIMESTAMP ", NamingTimestamp},
+		{"nope", NamingOriginal},
+	}
+
+	for _, tt := range tests {
+		if got := NormalizeNamingMode(tt.in); got != tt.want {
+			t.Errorf("NormalizeNamingMode(%q) = %q, want %q", tt.in, got, tt.want)
+		}
 	}
 }
 

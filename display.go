@@ -72,6 +72,12 @@ func (a *app) printCardInfo(card *detect.Card, result *analyze.Result) {
 		fmt.Println("  Content:  (empty)")
 	}
 
+	count := 0
+	if result != nil {
+		count = result.FileCount
+	}
+	fmt.Printf("  Naming:   %s\n", namingDisplayLine(a.cfg.Naming.Mode, count))
+
 	if a.dryRun {
 		fmt.Printf("  Dest:     %s (dry-run)\n", a.cfg.Destination.Path)
 	}

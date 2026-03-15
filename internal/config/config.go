@@ -10,10 +10,16 @@ import (
 
 const schemaVersion = "cardbot-config-v1"
 
+const (
+	NamingOriginal  = "original"
+	NamingTimestamp = "timestamp"
+)
+
 // Config holds all CardBot configuration.
 type Config struct {
 	Schema      string      `json:"$schema"`
 	Destination Destination `json:"destination"`
+	Naming      Naming      `json:"naming"`
 	Output      Output      `json:"output"`
 	Advanced    Advanced    `json:"advanced"`
 	Update      Update      `json:"update"`
@@ -22,6 +28,11 @@ type Config struct {
 // Destination settings.
 type Destination struct {
 	Path string `json:"path"`
+}
+
+// Naming settings.
+type Naming struct {
+	Mode string `json:"mode"`
 }
 
 // Output settings.
@@ -48,6 +59,9 @@ func Defaults() *Config {
 		Schema: schemaVersion,
 		Destination: Destination{
 			Path: "~/Pictures/CardBot",
+		},
+		Naming: Naming{
+			Mode: NamingOriginal,
 		},
 		Output: Output{
 			Color: true,
@@ -122,6 +136,12 @@ func Load(path string) (*Config, []string, error) {
 		cfg.Advanced.ExifWorkers = 16
 	}
 
+	normalizedNaming := NormalizeNamingMode(cfg.Naming.Mode)
+	if cfg.Naming.Mode != "" && normalizedNaming != cfg.Naming.Mode {
+		warnings = append(warnings, fmt.Sprintf("naming.mode %q is invalid, using %q", cfg.Naming.Mode, NamingOriginal))
+	}
+	cfg.Naming.Mode = normalizedNaming
+
 	return cfg, warnings, nil
 }
 
@@ -175,4 +195,16 @@ func ContractPath(path string) string {
 		return "~" + path[len(home):]
 	}
 	return path
+}
+
+// NormalizeNamingMode returns a supported naming mode, defaulting to original.
+func NormalizeNamingMode(mode string) string {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case NamingTimestamp:
+		return NamingTimestamp
+	case NamingOriginal, "":
+		return NamingOriginal
+	default:
+		return NamingOriginal
+	}
 }

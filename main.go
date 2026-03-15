@@ -16,7 +16,7 @@ import (
 	"github.com/illwill/cardbot/internal/pick"
 )
 
-const version = "0.2.9"
+const version = "0.3.0"
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "self-update" {
@@ -72,6 +72,8 @@ func main() {
 		cfg = config.Defaults()
 	}
 
+	cfg.Naming.Mode = config.NormalizeNamingMode(cfg.Naming.Mode)
+
 	// --- CLI flags override config ---
 	if *flagDest != "" {
 		cfg.Destination.Path = *flagDest
@@ -85,11 +87,8 @@ func main() {
 		}
 	}
 	if needsSetup {
-		cfg.Destination.Path = config.ContractPath(promptDestination(cfg.Destination.Path))
-		if cfgPath != "" {
-			if saveErr := config.Save(cfg, cfgPath); saveErr != nil {
-				fmt.Fprintf(os.Stderr, "Warning: could not save config: %s\n", friendlyErr(saveErr))
-			}
+		if saveErr := runSetup(cfg, cfgPath, promptDestination, promptNamingMode); saveErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not save config: %s\n", friendlyErr(saveErr))
 		}
 		fmt.Println()
 	}
@@ -145,7 +144,7 @@ func main() {
 	fmt.Println()
 
 	a.printf("[%s] Copy path %s\n", ts(), config.ContractPath(cfg.Destination.Path))
-	a.printf("[%s] Keep original filenames\n", ts())
+	a.printf("[%s] %s\n", ts(), namingStartupLine(cfg.Naming.Mode))
 
 	if latest, ok := maybeCheckForUpdate(cfg, cfgPath, logger); ok {
 		a.printf("[%s] Update available: %s (you have %s)\n", ts(), latest, version)

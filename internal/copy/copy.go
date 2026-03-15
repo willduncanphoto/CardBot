@@ -43,16 +43,18 @@ type Options struct {
 	DestBase      string                                // Base destination directory (e.g. ~/Pictures/CardBot)
 	BufferKB      int                                   // Copy buffer size in KB (default 256)
 	DryRun        bool                                  // If true, walk and report but don't copy
-	AnalyzeResult *analyze.Result                       // If provided, use EXIF dates for folder grouping
+	AnalyzeResult *analyze.Result                       // If provided, use EXIF dates/times for folder grouping and naming
 	Filter        func(relPath string, ext string) bool // If provided, skip files where func returns false
+	NamingMode    string                                // "original" (default) or "timestamp"
 }
 
 // fileEntry holds a file to be copied.
 type fileEntry struct {
-	srcPath string // absolute source path on card
-	relPath string // relative path from DCIM (e.g. "100NIKON/DSC_0001.NEF")
-	size    int64
-	date    string // YYYY-MM-DD for folder grouping
+	srcPath     string // absolute source path on card
+	relPath     string // relative path from DCIM (e.g. "100NIKON/DSC_0001.NEF")
+	size        int64
+	date        string    // YYYY-MM-DD for folder grouping
+	captureTime time.Time // EXIF capture time (fallback: mtime)
 }
 
 // Run executes the copy operation.
@@ -68,10 +70,12 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 		return nil, fmt.Errorf("no DCIM folder found on card")
 	}
 
-	// Build EXIF date lookup from analyze result if available.
+	// Build EXIF lookups from analyze result if available.
 	var exifDates map[string]string
+	var exifDateTimes map[string]time.Time
 	if opts.AnalyzeResult != nil {
 		exifDates = opts.AnalyzeResult.FileDates
+		exifDateTimes = opts.AnalyzeResult.FileDateTimes
 	}
 
 	// --- Phase 1: Collect files ---
@@ -118,17 +122,22 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 			}
 		}
 
-		// Use EXIF date if available, fall back to mtime.
-		date := info.ModTime().Format("2006-01-02")
+		// Use EXIF date/time if available, fall back to mtime.
+		captureTime := info.ModTime()
+		date := captureTime.Format("2006-01-02")
 		if exifDate, ok := exifDates[rel]; ok {
 			date = exifDate
 		}
+		if exifDateTime, ok := exifDateTimes[rel]; ok && !exifDateTime.IsZero() {
+			captureTime = exifDateTime
+		}
 
 		files = append(files, fileEntry{
-			srcPath: path,
-			relPath: rel,
-			size:    info.Size(),
-			date:    date,
+			srcPath:     path,
+			relPath:     rel,
+			size:        info.Size(),
+			date:        date,
+			captureTime: captureTime,
 		})
 		totalBytes += info.Size()
 		return nil
@@ -180,6 +189,14 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 	start := time.Now()
 	madeDir := make(map[string]bool, 32)
 
+	namingMode := normalizeNamingMode(opts.NamingMode)
+	seqDigits := sequenceDigits(len(files))
+	if opts.AnalyzeResult != nil && opts.AnalyzeResult.FileCount > 0 {
+		seqDigits = sequenceDigits(opts.AnalyzeResult.FileCount)
+	}
+	seqMax := sequenceMax(seqDigits)
+	seq := 1
+
 	for i := range files {
 		// Check for cancellation before each file.
 		select {
@@ -189,7 +206,16 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 		}
 
 		f := &files[i]
-		destPath := filepath.Join(opts.DestBase, f.date, f.relPath)
+		destRelPath := f.relPath
+		if namingMode == namingModeTimestamp {
+			destRelPath = renamedRelativePath(f.relPath, f.captureTime, seq, seqDigits)
+			seq++
+			if seq > seqMax {
+				seq = 1
+			}
+		}
+
+		destPath := filepath.Join(opts.DestBase, f.date, destRelPath)
 
 		// Guard against path traversal via malicious card paths.
 		destPath = filepath.Clean(destPath)
@@ -204,7 +230,7 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 				FilesTotal:  len(files),
 				BytesDone:   bytesDone,
 				BytesTotal:  totalBytes,
-				CurrentFile: f.relPath,
+				CurrentFile: destRelPath,
 			})
 		}
 
