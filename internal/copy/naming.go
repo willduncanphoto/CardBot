@@ -9,11 +9,11 @@ import (
 	"github.com/illwill/cardbot/internal/config"
 )
 
-// SequenceDigits returns the sequence padding (fixed at 3 for 0.3.x).
-// Future: per-date detection for cards with >999 files in a single day.
+// SequenceDigits returns the sequence padding (fixed at 4 for event work).
+// 4-digit prevents loop on heavy wedding days (1000+ shots).
 func SequenceDigits(totalFiles int) int {
 	_ = totalFiles // reserved for future per-date detection
-	return 3
+	return 4
 }
 
 func sequenceMax(digits int) int {

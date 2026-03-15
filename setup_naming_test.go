@@ -106,7 +106,7 @@ func TestNamingStartupLine(t *testing.T) {
 	})
 
 	t.Run("timestamp", func(t *testing.T) {
-		want := "Naming: Timestamp + sequence (001-999)"
+		want := "Naming: Timestamp + sequence (0001-9999)"
 		got := namingStartupLine(config.NamingTimestamp)
 		if got != want {
 			t.Fatalf("got %q, want %q", got, want)
@@ -126,7 +126,7 @@ func TestNamingDisplayLine(t *testing.T) {
 
 	t.Run("timestamp", func(t *testing.T) {
 		got := namingDisplayLine(config.NamingTimestamp, 3048)
-		want := "Timestamp + sequence (001-999)"
+		want := "Timestamp + sequence (0001-9999)"
 		if got != want {
 			t.Fatalf("got %q, want %q", got, want)
 		}

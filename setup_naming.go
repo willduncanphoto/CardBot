@@ -87,7 +87,7 @@ func namingModeLabel(mode string) string {
 
 func namingStartupLine(mode string) string {
 	if config.NormalizeNamingMode(mode) == config.NamingTimestamp {
-		return "Naming: Timestamp + sequence (001-999)"
+		return "Naming: Timestamp + sequence (0001-9999)"
 	}
 	return "Naming: Camera original (DSC_xxxx.NEF)"
 }
@@ -97,5 +97,5 @@ func namingDisplayLine(mode string, fileCount int) string {
 	if config.NormalizeNamingMode(mode) != config.NamingTimestamp {
 		return "Camera original (DSC_0001.NEF)"
 	}
-	return "Timestamp + sequence (001-999)"
+	return "Timestamp + sequence (0001-9999)"
 }

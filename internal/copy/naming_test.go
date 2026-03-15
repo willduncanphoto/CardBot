@@ -14,19 +14,19 @@ import (
 
 func TestSequenceDigits(t *testing.T) {
 	t.Parallel()
-	// Fixed at 3 digits for 0.3.x simplicity.
-	// Future: per-date detection for >999 files in single day.
+	// Fixed at 4 digits for event/wedding work.
+	// Prevents loop on heavy days (1000+ shots).
 	tests := []struct {
 		count int
 		want  int
 	}{
-		{0, 3},
-		{1, 3},
-		{999, 3},
-		{1000, 3},   // was 4, now 3 (simplified)
-		{9999, 3},   // was 4, now 3 (simplified)
-		{10000, 3},  // was 5, now 3 (simplified)
-		{250000, 3}, // was 5, now 3 (simplified)
+		{0, 4},
+		{1, 4},
+		{999, 4},
+		{1000, 4},
+		{9999, 4},
+		{10000, 4},
+		{250000, 4},
 	}
 
 	for _, tt := range tests {
@@ -183,10 +183,10 @@ func TestCopy_DryRun_ReportsRenameMappings(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("progress mapping count = %d, want 2", len(got))
 	}
-	if got[0][0] != "100NIKON/DSC_0001.NEF" || got[0][1] != filepath.Join("100NIKON", "260314T143052_001.NEF") {
+	if got[0][0] != "100NIKON/DSC_0001.NEF" || got[0][1] != filepath.Join("100NIKON", "260314T143052_0001.NEF") {
 		t.Fatalf("first mapping = %q -> %q", got[0][0], got[0][1])
 	}
-	if got[1][0] != "100NIKON/DSC_0002.MOV" || got[1][1] != filepath.Join("100NIKON", "260314T143052_002.MOV") {
+	if got[1][0] != "100NIKON/DSC_0002.MOV" || got[1][1] != filepath.Join("100NIKON", "260314T143052_0002.MOV") {
 		t.Fatalf("second mapping = %q -> %q", got[1][0], got[1][1])
 	}
 	if _, err := os.Stat(filepath.Join(dest, "2026-03-14")); !os.IsNotExist(err) {
@@ -225,8 +225,8 @@ func TestCopy_TimestampNaming(t *testing.T) {
 		t.Fatalf("FilesCopied = %d, want 2", res.FilesCopied)
 	}
 
-	assertFileSize(t, filepath.Join(dest, "2026-03-14", "100NIKON", "260314T143052_001.NEF"), 1)
-	assertFileSize(t, filepath.Join(dest, "2026-03-14", "100NIKON", "260314T143052_002.MOV"), 1)
+	assertFileSize(t, filepath.Join(dest, "2026-03-14", "100NIKON", "260314T143052_0001.NEF"), 1)
+	assertFileSize(t, filepath.Join(dest, "2026-03-14", "100NIKON", "260314T143052_0002.MOV"), 1)
 
 	// Original camera names should not be present in timestamp mode.
 	if _, err := os.Stat(filepath.Join(dest, "2026-03-14", "100NIKON", "DSC_0001.NEF")); !os.IsNotExist(err) {
@@ -258,8 +258,8 @@ func TestCopy_TimestampNaming_Uses3Digits(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Fixed 3-digit: 001 not 0001
-	assertFileSize(t, filepath.Join(dest, "2026-03-14", "100NIKON", "260314T143052_001.NEF"), 1)
+	// Fixed 4-digit
+	assertFileSize(t, filepath.Join(dest, "2026-03-14", "100NIKON", "260314T143052_0001.NEF"), 1)
 }
 
 func TestSortFilesByCaptureTime(t *testing.T) {
