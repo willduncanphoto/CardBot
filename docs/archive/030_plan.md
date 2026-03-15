@@ -274,6 +274,51 @@ When a destination file already exists:
 
 ---
 
+## Configuration Schema Migration Strategy
+
+**Problem:** When we upgrade config schema (v1 → v2 → v3), existing user configs
+break or get reset to defaults. We need a defined migration path.
+
+**Current State:**
+- v1: Original config (destination only, no schema field)
+- v2: Current config with `$schema` field, naming mode, advanced settings
+- v3: Future config with full renaming templates, sequence config, etc.
+
+**Migration Rules:**
+1. **Forward compatibility:** Newer CardBot reads old schemas and migrates on load
+2. **No data loss:** User settings are preserved, new fields get defaults
+3. **Version stamping:** Config is saved with current schema after migration
+4. **Warnings:** User sees console message about migration:  
+   `[2026-03-14T10:00:00] Config migrated from v2 to v3`
+
+**Implementation Pattern:**
+```go
+// In config.Load()
+cfg, migrated := migrateConfig(rawJSON)
+if migrated {
+    warnings = append(warnings, fmt.Sprintf("config migrated to %s", schemaVersion))
+    // Save back immediately so user has migrated config on disk
+    _ = Save(cfg, path)
+}
+```
+
+**v2 → v3 Migration Mapping:**
+| v2 Field | v3 Field | Transform |
+|----------|----------|-----------|
+| `naming.mode` | `renaming.enabled` + `renaming.template` | `"original"` → `enabled:false`; `"timestamp"` → `enabled:true, template:"{YY}{MM}{DD}T{HH}{mm}{ss}_{seq}.{ext}"` |
+| (none) | `renaming.sequence.scope` | Default `"card"` |
+| (none) | `renaming.collision` | Default `"skip"` |
+
+**Open Issue:** What if user edited config while running older CardBot version?
+- Option A: Always migrate on load (aggressive, may lose v3-specific edits)
+- Option B: Preserve unknown fields and merge (complex)
+- Option C: Warn and ask user to run `--setup` (safe, requires action)
+
+**Recommendation:** Start with Option A for v2→v3 since v3 doesn't exist yet.
+For future v3→v4, implement field-preserving merge.
+
+---
+
 ## Future Enhancements (Post-0.3.0)
 
 - Regex-based transformations on original filename

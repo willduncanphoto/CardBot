@@ -1,223 +1,58 @@
-# CardBot — TODO
+# CardBot — Active Work
 
-## Current Version: 0.3.0
+See [ROADMAP.md](ROADMAP.md) for full future planning.
 
-File renaming on copy. Transform cryptic camera filenames into meaningful,
-organized names using EXIF dates, camera IDs, and custom sequences.
+## Current: 0.3.2
 
-**0.2.x — Testing completed.** Self-update working, selective copy validated with real Z9 cards.
+**Status:** Ready for real-world validation.
 
----
+### Before Tagging 0.3.2
+- [ ] Real-world test: Z9 card, timestamp mode
+- [ ] Verify 3-digit sequence behavior (001-999)
+- [ ] Verify dry-run preview output
+- [ ] Verify re-copy behavior (expected: may re-copy due to no mapping log)
 
-## 0.3.0 — File Renaming
-
-Rename files on copy with customizable templates. See [docs/030_plan.md](030_plan.md) for the full design spec.
-
-- [ ] Config-based renaming templates (`renaming` section in config)
-- [ ] Template variables: `{date}`, `{camera}`, `{seq}`, `{ext}`, `{original}`
-- [ ] `[r]` Rename settings — interactive template chooser
-- [ ] `[n]` Toggle renaming on/off for current session
-- [ ] Per-card sequence numbering (resets per card)
-- [ ] Global sequence numbering (persists across cards)
-- [ ] Date format options (YYYY-MM-DD, YYYYMMDD, etc.)
-- [ ] Collision handling: skip, overwrite, or add suffix
-- [ ] Preview mode: show rename mapping before copy
-- [ ] Dotfile v3: track original → renamed mapping for recovery
-- [ ] `[t]` during copy: show current filename (filename ticker)
+### Known Limitations (Acceptable for 0.3.2)
+- 1000+ files/day: sequence loops (001→999→001). Rare, documented.
+- Multi-camera same second: collision risk. See ROADMAP "Stuff to Think About".
+- Re-copy: uses size check, may re-copy renamed files.
 
 ---
 
-## Quick Fixes (land in any release)
+## Next Version: TBD
 
-- [x] Add "OM System" to `BrandColor` in `ui/color.go` — `cleanGear` already maps
-      `"OM DIGITAL"` → `"OM System"` but the color map only has `"Olympus"` → cyan
-- [x] `go build -ldflags="-s -w"` — strips debug info, saves ~1.8MB on binary (Makefile added)
+See ROADMAP.md for candidates:
+- Video workflow separation
+- Config schema v3 migration harness
+- Linux platform support
 
----
-
-## 0.1.8 — Code Health
-
-Cleanup pass with verified, real issues from four model reviews cross-checked
-against the actual codebase. Refactor to make the codebase testable and clean
-before adding selective copy features.
-
-### Split main.go (~995 lines)
-
-- [x] **`main.go`** — flag parsing, config, logger setup, signal handling, `main()`
-- [x] **`app.go`** — `app` struct, event loop, card/queue management, `handleInput`
-- [x] **`display.go`** — `printCardInfo`, `printInvalidCardInfo`, `printPrompt`, `showHelp`,
-  `showHardwareInfo`, `friendlyErr`
-- [x] **`copy_cmd.go`** — `copyAll` method, `runSpeedTest`
-
-### Other Refactors
-
-- [x] Extract `printCardHeader` helper — DRY between `printCardInfo` and `printInvalidCardInfo`
-- [x] Add `context.Context` to `displayCard` and analyzer — enables clean cancellation
-      when card is removed mid-scan
-- [x] Log walk errors instead of swallowing them — permission/IO errors now collected
-      as warnings in `Result.Warnings` (both analyze and copy packages)
-- [x] Standardize `friendlyErr` for all user-facing errors — dotfile write warning,
-      config load errors, speed test errors all routed through `friendlyErr`
-- [x] Validate destination path — empty destination check at copy start with clear message
-- [x] Move `FormatBytes` to platform-agnostic file — `detect/format.go` with no build
-      constraints, compiles on all platforms
-- [x] Remove 500ms `displayCard` delay — analysis starts immediately on card detection
-
-### Test Additions
-
-- [x] `TestAnalyze_ContextCancelled` — verifies analyzer respects context cancellation
-- [x] `TestFormatBytes` moved to `format_test.go` — runs on all platforms (was darwin/linux only)
-
-| Package | Coverage | Notes |
-|---------|----------|-------|
-| analyze | covered | Context cancellation test added |
-| config | covered | Existing tests sufficient |
-| copy | covered | Walk warnings added to Result |
-| detect | covered | FormatBytes tests now platform-agnostic |
-| dotfile | covered | Existing tests sufficient |
-| log | covered | Existing tests sufficient |
-| ui | covered | Existing tests sufficient |
-| main | 0% | Blocked on integration testing — requires real card hardware |
-| pick | 0% | macOS-only osascript — skip |
-| speedtest | 0% | Needs real filesystem — skip |
+Multi-camera collision prevention is **parked** — not 0.4.0 priority.
 
 ---
 
-## 0.1.9 — Selective Copy
+## UI/UX Updates (Future)
 
-Core feature: let users copy subsets of a card instead of everything.
-See [docs/SELECTIVE-COPY.md](SELECTIVE-COPY.md) for the full design spec.
+- [ ] **Technical EXIF Display Mode**
+  - Show raw EXIF values in card info:
+    ```
+    Make    : NIKON CORPORATION
+    Model   : NIKON Z 9
+    ```
+  - Instead of cleaned "Nikon Z 9"
+  - Toggle or config option for technical vs friendly display
+  
+- [ ] **Card Info Layout Refresh**
+  - More technical/professional appearance
+  - Raw EXIF values where meaningful
+  - Cleaner alignment
 
-- [x] `[s]` Copy Selects — copy starred/picked files only (XMP rating > 0)
-- [x] `[p]` Copy Photos — copy photo files only (RAW + JPEG, no video)
-- [x] `[v]` Copy Videos — copy video files only (MOV, MP4, MXF, etc.)
-- [x] Dotfile v2: `copies` array — one entry per mode, upsert on re-run
-- [x] Dotfile v1 → v2 migration on read
-- [x] Status line reflects partial copy (`Selects copied on ...`)
-- [x] Session guard per mode — `copiedModes map[string]bool` replaces `copied bool`
-- [x] "All" supersedes selective modes in guard and display
-- [x] Empty filter guard (0 starred, 0 photos, 0 videos → message)
-- [x] Disk space preflight scoped to selected file subset
-- [x] Help removes strikethrough from `[s]`, `[p]`, `[v]`
-- [x] Analyzer: `FileRatings map[string]int` for per-file star data
-- [x] Analyzer: export `IsPhoto(ext)` and `IsVideo(ext)` helpers
-- [x] Copy engine: `Filter func(relPath, ext string) bool` in Options
-- [x] Extract `copyFiltered(card, mode, filter)` from `copyAll`
+## Quick Fixes (Any Release)
 
-### Dotfile Design — Resolved
-
-All design decisions are documented in [SELECTIVE-COPY.md](SELECTIVE-COPY.md):
-
-- [x] Schema: `copies` array with one entry per mode (upsert on re-run)
-- [x] Status logic: "all" supersedes → "Copied on ..."; otherwise list modes
-- [x] `[a]` only records `"all"` entry — does not modify selective entries
-- [x] Re-copy after `[a]`: engine's size-check skip handles it automatically
-- [x] `photos + videos ≠ all` — tracked independently
+- [ ] Add "OM System" brand color (when confirmed)
+- [ ] Config path display command (`cardbot --config`)
 
 ---
 
-## 0.2.0 — Testing (Complete)
+## Done
 
-Everything from 0.1.x is ready for real-world validation.
-
-- [x] All 0.1.8, 0.1.9 items complete
-- [x] Selective copy fully implemented with correct status tracking
-- [x] Partial copy state in dotfile — multi-mode copy history
-- [x] No known crashes or data loss scenarios
-- [x] README reflects actual current behavior
-- [x] Safe updater flow (`cardbot self-update`) with checksum verification
-- [x] Tested with real Z9 cards
-- [x] Version bumped to 0.2.9 after updater fixes
-
-**Completed:** Real-world testing validated. Self-update working. Ready for 0.3.0.
-
----
-
-## 0.4.0 — Video Workflow Separation (Planned)
-
-Photos and videos often need different post-processing workflows. This milestone separates video handling with its own destination and tracking.
-
-- [ ] Separate video destination path (`destination.video_path` config)
-- [ ] `[v]` Copy Videos copies to video-specific folder (not mixed with photos)
-- [ ] `[a]` Copy All splits content: photos → photo dest, videos → video dest
-- [ ] Independent dotfile tracking for video copies (separate from photos)
-- [ ] Video-specific subfolder naming (may differ from photo naming)
-- [ ] Video metadata display (duration, resolution, codec) in card info
-- [ ] Optional: proxy generation workflow for video files
-
-**Use case:** Photos go to `~/Pictures/CardBot/` for Lightroom import, videos go to `~/Movies/CardBot/` (or external RAID) for Premiere/DaVinci. Each tracked independently — can copy photos without re-copying videos, or vice versa.
-
----
-
-## 0.5.0 — Multi-Camera Collision Prevention
-
-When using timestamp-based renaming with multiple cameras, files can collide if two cameras shoot at the same second and generate the same sequence number:
-
-```
-Camera A Z9:  260314T143052_0001.NEF
-Camera B Z8:  260314T143052_0001.NEF  ← collision!
-```
-
-**Solution:** Add camera identifier prefix/suffix to distinguish sources.
-
-- [ ] Camera ID in rename template (`{camera}` variable)
-- [ ] Template: `{date}_{camera}_{seq}.{ext}` → `260314T143052_Z9_0001.NEF`
-- [ ] Camera ID extracted from EXIF (Model field, cleaned)
-- [ ] Short codes for common cameras (Z9, Z8, R5, A7IV, etc.)
-- [ ] Configurable camera aliases (user can override "NIKON Z 9" → "Z9-Backup")
-- [ ] Subfolder per camera option (alternative to prefix)
-
-**Use case:** Wedding with second shooter. Both Z9s shooting same moment. Timestamp+sequence alone collides. Camera prefix prevents overwrite.
-
----
-
-## Wishlist
-
-Not on the immediate roadmap. Nice-to-have for someday.
-
-- Linux support (detection, hardware info, speed test, eject)
-- Estimated time remaining during copy
-- Show current filename during copy (now part of 0.3.0)
-- Per-file copy logging (forensic/recovery audit trail)
-- Single-key input (raw terminal mode, no Enter required)
-- Auto-update enhancements (signed releases, optional package-manager integration)
-- Network destination support
-- Windows support
-- JSON output mode for scripting
-- Star rating filters: `[2]` Copy 2★+, `[3]` Copy 3★+, `[4]` Copy 4★+, `[5]` Copy 5★ only
-- Resume interrupted copies
-- Video metadata (duration, resolution)
-
----
-
-## Won't Fix
-
-Items raised in code reviews that were investigated and rejected.
-
-| Item | Why |
-|------|-----|
-| `lastUpdate` race in copy progress | Not a race — only the copy goroutine reads/writes it |
-| `cardInvalid` naming ("negative name") | Reads fine: `if a.cardInvalid`. `hasDCIM` would be worse |
-| Queue can grow unbounded | Photographers don't have 10 card readers. Never happens |
-| Input channel size 10 vs 1 | Works fine with `drainInput()`. Not worth changing |
-| FAT32 dotfile atomicity | Rename is atomic for metadata. Non-issue |
-| XMP buffer too small/large | 256KB is correct for camera RAW headers |
-| God object / extract pure functions | Premature abstraction. `app` struct is manageable |
-| Version constant should be typed | Idiomatic Go. `const version = "0.1.8"` is correct |
-| Log file needs fsync | CLI tool log doesn't need fsync on every write |
-| `printf` vs `fmt.Printf` inconsistent | Actually consistent: `a.printf` = print+log, `fmt.Printf` = transient output |
-| `FormatBytes` duplication in copy | Already fixed in 0.1.7 — copy imports `detect.FormatBytes` |
-| Detector channels unbuffered | Wrong — they're buffered at size 10 |
-
----
-
-## Review History
-
-This file consolidates findings from four independent code reviews (Claude, Kimi,
-MiniMax, GLM) conducted on 2026-03-12, cross-checked against the actual codebase
-on 2026-03-13. Stale items (already fixed in 0.1.7) were removed. Disagreements
-were resolved by reading the code. The individual review files have been retired.
-
-Code health refactor (0.1.8) completed on 2026-03-13: main.go split into 4 files,
-context threading, walk error logging, friendlyErr standardization, FormatBytes
-moved to platform-agnostic file, 500ms delay removed, destination validation added.
+See ROADMAP.md for completed milestones.
