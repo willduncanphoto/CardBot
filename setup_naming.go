@@ -32,7 +32,7 @@ func promptNamingModeIO(in io.Reader, out io.Writer, defaultMode string) string 
 		fmt.Fprintln(out, "    Use if you rely on camera numbering.")
 		fmt.Fprintln(out)
 		fmt.Fprintln(out, "[2] Timestamp + sequence")
-		fmt.Fprintln(out, "    260314T143052_001.NEF, _002.NEF ...")
+		fmt.Fprintln(out, "    260314T143052_0001.NEF, _0002.NEF ...")
 		fmt.Fprintln(out, "    Use for automatic order across all cards.")
 		fmt.Fprintln(out)
 		fmt.Fprintln(out, "You can change this later with cardbot --setup.")
@@ -83,15 +83,6 @@ func namingModeLabel(mode string) string {
 		return "Timestamp + sequence"
 	}
 	return "Camera original"
-}
-
-func namingStartupLine(mode string) string {
-	// Note: This is no longer used at startup (0.4.0 UX cleanup)
-	// Kept for reference, card info display uses namingDisplayLine instead
-	if config.NormalizeNamingMode(mode) == config.NamingTimestamp {
-		return "Timestamp + sequence (0001-9999)"
-	}
-	return "Camera original (DSC_xxxx.NEF)"
 }
 
 func namingDisplayLine(mode string, fileCount int) string {

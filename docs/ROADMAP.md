@@ -1,6 +1,6 @@
 # CardBot Roadmap
 
-## Current: 0.3.2 (Stable)
+## Current: 0.3.3 (Stable)
 
 **Status:** Feature-complete for renaming. Ready for real-world validation.
 
@@ -39,8 +39,8 @@ Future major feature. See "Stuff to Think About" for candidates.
 
 **Problem:** Two cameras (Z9 + Z8) shooting same wedding:
 ```
-Z9: 260314T143052_001.NEF
-Z8: 260314T143052_001.NEF  ← collision!
+Z9: 260314T143052_0001.NEF
+Z8: 260314T143052_0001.NEF  ← collision!
 ```
 
 **Also:** Two Z9 bodies (primary + backup) report identical Make/Model.
@@ -49,9 +49,9 @@ Z8: 260314T143052_001.NEF  ← collision!
 
 | Approach | Example | Notes |
 |----------|---------|-------|
-| Camera prefix | `Z9_260314T143052_001.NEF` | Human-readable |
-| Camera suffix | `260314T143052_001_Z9.NEF` | Timestamp first |
-| Body serial | `Z9_6746_260314T143052_001.NEF` | Handles two Z9s |
+| Camera prefix | `Z9_260314T143052_0001.NEF` | Human-readable |
+| Camera suffix | `260314T143052_0001_Z9.NEF` | Timestamp first |
+| Body serial | `Z9_6746_260314T143052_0001.NEF` | Handles two Z9s |
 | Pre-ingest audit | Scan all cards, assign global sequence | Heavy UX |
 | Per-camera subfolders | `2026-03-14/Z9/...` | Loses chronology |
 
@@ -104,7 +104,7 @@ Raw terminal mode (no Enter required). Power user polish.
 
 ### 0.3.x — File Renaming
 - Timestamp-based renaming with EXIF capture time
-- Fixed 3-digit sequence (001-999)
+- Fixed 4-digit sequence (0001-9999)
 - Chronological ordering across DCIM folders
 - Dry-run with preview
 
@@ -126,7 +126,8 @@ Raw terminal mode (no Enter required). Power user polish.
 
 | Version | Date | Key Feature |
 |---------|------|-------------|
-| 0.3.2 | 2026-03-14 | Simplified UX, fixed 3-digit sequence, Z9 EXIF analysis |
+| 0.3.3 | 2026-03-15 | Cleanup pass: docs sync, dead code removal, prompt consistency |
+| 0.3.2 | 2026-03-14 | Simplified UX, fixed 4-digit sequence, Z9 EXIF analysis |
 | 0.3.1 | — | (Skipped, merged into 0.3.2) |
 | 0.3.0 | — | Initial renaming implementation |
 | 0.2.9 | 2026-03-12 | Self-update fixes |

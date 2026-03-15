@@ -1,18 +1,16 @@
 # Output Format
 
+Document version: 0.3.3
+
 ## Full Startup Flow
 
 Complete sequence from launch to first card display:
 
 ```
-[2026-03-12T12:15:32] Starting CardBot 0.1.9.     ← dots animate over ~1s
-[2026-03-12T12:15:33] Starting CardBot 0.1.9..
-[2026-03-12T12:15:34] Starting CardBot 0.1.9...
-[2026-03-12T12:15:34] Copy path /Pictures/CardBot
-[2026-03-12T12:15:34] Keep original filenames
-[2026-03-12T12:15:34] Scanning  |                  ← spinner animates: | / - \
-[2026-03-12T12:15:35] Card detected               ← card inserted, spinner stops
-[2026-03-12T12:15:35] Scanning /Volumes/NIKON Z 9  ... 3051 files ✓ (0s)
+[2026-03-12T12:15:32] Starting CardBot 0.3.3...     ← dots animate over ~1s
+[2026-03-12T12:15:34] Waiting for card...
+[2026-03-12T12:15:35] Card detected               ← card inserted
+[2026-03-12T12:15:35] Reading /Volumes/NIKON Z 9 ... 3051 files ✓ (0s)
 
   Status:   New
   Path:     /Volumes/NIKON Z 9
@@ -23,17 +21,18 @@ Complete sequence from launch to first card display:
             2026-02-26      28.4 MB      1   NEF
 
   Total:    3048 photos, 0 videos, 96.0 GB
-────────────────────────────────────────
-[a] Copy All  [e] Eject  [x] Exit  [?] Help  >
+
+  Copy to:  ~/Pictures/CardBot
+  Naming:   Timestamp + sequence (xxxx = 0001-9999)
+
+[a] Copy All  [s] Copy Selects  [p] Copy Photos  [v] Copy Videos  [e] Eject  [x] Exit  [?] Help  >
 ```
 
 ## Startup
 
 ```
-[2026-03-12T12:15:32] Starting CardBot 0.1.9...
-[2026-03-12T12:15:32] Copy path /Pictures/CardBot
-[2026-03-12T12:15:32] Keep original filenames
-[2026-03-12T12:15:32] Scanning  |
+[2026-03-12T12:15:32] Starting CardBot 0.3.3...
+[2026-03-12T12:15:34] Waiting for card...
 ```
 
 ## First Run (No Config)
@@ -47,16 +46,34 @@ Where should CardBot copy your work?
 
 Destination: /Users/user/Pictures/CardBot
 
-[2026-03-12T12:15:32] Starting CardBot 0.1.9...
-[2026-03-12T12:15:32] Copy path /Pictures/CardBot
-[2026-03-12T12:15:32] Scanning...
+File Naming
+────────────────────────────────────────
+
+Camera filenames reset every 10,000 shots.
+This can cause duplicates when copying multiple cards.
+
+[1] Keep camera filenames
+    DSC_0001.NEF, DSC_0002.NEF ...
+    Use if you rely on camera numbering.
+
+[2] Timestamp + sequence
+    260314T143052_0001.NEF, _0002.NEF ...
+    Use for automatic order across all cards.
+
+You can change this later with cardbot --setup.
+
+Choice [1]: 2
+Naming set to: Timestamp + sequence
+
+[2026-03-12T12:15:40] Starting CardBot 0.3.3...
+[2026-03-12T12:15:43] Waiting for card...
 ```
 
 ## Card Detected (New)
 
 ```
-[2026-03-12T12:15:32] Card detected
-[2026-03-12T12:15:33] Scanning /Volumes/NIKON Z 9  ... 3051 files ✓ (0s)
+[2026-03-12T12:15:35] Card detected
+[2026-03-12T12:15:35] Reading /Volumes/NIKON Z 9 ... 3051 files ✓ (0s)
 
   Status:   New
   Path:     /Volumes/NIKON Z 9
@@ -68,8 +85,11 @@ Destination: /Users/user/Pictures/CardBot
             ...
 
   Total:    3048 photos, 0 videos, 96.0 GB
-────────────────────────────────────────
-[a] Copy All  [e] Eject  [x] Exit  [?]  >
+
+  Copy to:  ~/Pictures/CardBot
+  Naming:   Timestamp + sequence (xxxx = 0001-9999)
+
+[a] Copy All  [s] Copy Selects  [p] Copy Photos  [v] Copy Videos  [e] Eject  [x] Exit  [?] Help  >
 ```
 
 ## Card Detected (Previously Copied)
@@ -80,8 +100,11 @@ Destination: /Users/user/Pictures/CardBot
   Storage:  96.4 GB / 476.9 GB (20%)
   Camera:   Nikon Z 9
   ...
-────────────────────────────────────────
-[a] Copy All  [e] Eject  [x] Exit  [?]  >
+
+  Copy to:  ~/Pictures/CardBot
+  Naming:   Camera original (DSC_xxxx.NEF)
+
+[a] Copy All  [e] Eject  [x] Exit  [?] Help  >
 ```
 
 ## Card Invalid (No DCIM)
@@ -94,35 +117,57 @@ Destination: /Users/user/Pictures/CardBot
   Storage:  1.2 GB / 32.0 GB (3%)
   Camera:   Unknown
   Content:  (no DCIM — not a camera card)
-────────────────────────────────────────
-[e] Eject  [x] Exit  [?]  >
+
+[e] Eject  [x] Exit  [?] Help  >
 ```
 
 ## Copy Progress
 
 ```
-[a] Copy All  [e] Eject  [x] Exit  [?]  > a
+[a] Copy All  [e] Eject  [x] Exit  [?] Help  > a
 
 [2026-03-12T12:15:35] Copying all files to ~/Pictures/CardBot
 [2026-03-12T12:15:35] Press [\] to cancel
-[2026-03-12T12:15:40] Copying... 1247/3051 files  48.2 GB/96.4 GB (50%)
+[2026-03-12T12:15:40] Copying... 1247/3051 files  48.2 GB/96.4 GB (50%)    
 ...
 [2026-03-12T12:22:18] Copy complete ✓
 [2026-03-12T12:22:18] 3051 files, 96.0 GB copied in 8m32s (188.4 MB/s)
 
-[e] Eject  [x] Done  [?]  >
+[e] Eject  [x] Done  [?] Help  >
 ```
 
 ## Copy Cancelled
 
 ```
 [2026-03-12T12:18:05] Copy cancelled — 1247 files copied.
-[a] Copy All  [e] Eject  [x] Exit  [?]  >
+[a] Copy All  [e] Eject  [x] Exit  [?] Help  >
+```
+
+## Dry-Run Mode
+
+```bash
+./cardbot --dry-run
+```
+
+Shows rename preview in timestamp mode:
+
+```
+[a] Copy All  [e] Eject  [x] Exit  [?] Help  > a
+
+[2026-03-12T12:15:35] Dry-run: would copy all files to ~/Pictures/CardBot
+  100NIKON/DSC_0001.NEF → 100NIKON/260314T143052_0001.NEF
+  100NIKON/DSC_0002.MOV → 100NIKON/260314T143052_0002.MOV
+  100NIKON/DSC_0003.NEF (unchanged)
+[2026-03-12T12:15:35] Dry-run complete ✓
+[2026-03-12T12:15:35] 3 files, 45.2 MB would be copied
+... +47 more files (preview capped at 200)
 ```
 
 ## Destination Structure
 
-Files are grouped by date, preserving original folder structure:
+### Original Naming Mode
+
+Files preserve camera filenames:
 
 ```
 ~/Pictures/CardBot/
@@ -141,15 +186,31 @@ Files are grouped by date, preserving original folder structure:
         └── DSC_0200.MOV
 ```
 
+### Timestamp Naming Mode
+
+Files renamed with EXIF timestamp + sequence:
+
+```
+~/Pictures/CardBot/
+├── 2026-02-26/
+│   └── 100NIKON/
+│       └── 260226T143052_0001.NEF
+├── 2026-02-27/
+│   └── 100NIKON/
+│       ├── 260227T091234_0002.NEF
+│       ├── 260227T091235_0003.NEF
+│       └── 260227T101500_0004.JPG
+```
+
 ## Eject
 
 ```
-[a] Copy All  [e] Eject  [x] Exit  [?]  > e
+[a] Copy All  [e] Eject  [x] Exit  [?] Help  > e
 Ejecting NIKON Z 9  ...
 
 [2026-03-12T12:20:15] Card ejected: /Volumes/NIKON Z 9
 
-[2026-03-12T12:20:18] Scanning...
+[2026-03-12T12:20:18] Waiting for card...
 ```
 
 ## Card Removal (Unexpected)
@@ -157,7 +218,7 @@ Ejecting NIKON Z 9  ...
 ```
 [2026-03-12T12:20:15] Card removed: /Volumes/NIKON Z 9
 
-[2026-03-12T12:20:18] Scanning...
+[2026-03-12T12:20:18] Waiting for card...
 ```
 
 ## Queue
@@ -224,10 +285,19 @@ Fixed-width columns for consistent visual scanning:
 | Count | variable | Right | File count, right-aligned to widest |
 | Extensions | variable | Left | Sorted alphabetically, uppercase |
 
-## Dry-Run Mode
+## Config Info Display
 
-```bash
-./cardbot --dry-run
+Config information appears after card content (0.4.0+):
+
+```
+  Copy to:  ~/Pictures/CardBot
+  Naming:   Camera original (DSC_xxxx.NEF)
 ```
 
-Shows `(dry-run)` next to destination. Copy commands report what would happen without writing files.
+Or in dry-run mode:
+
+```
+  Copy to:  ~/Pictures/CardBot
+  Naming:   Timestamp + sequence (xxxx = 0001-9999)
+  Mode:     dry-run (no files will be copied)
+```

@@ -95,28 +95,6 @@ func TestPromptNamingModeIO_EOF(t *testing.T) {
 	}
 }
 
-func TestNamingStartupLine(t *testing.T) {
-	t.Parallel()
-
-	// Note: namingStartupLine is no longer used at startup (0.4.0 UX cleanup)
-	// These tests verify the simplified format for potential future use
-	t.Run("original", func(t *testing.T) {
-		got := namingStartupLine(config.NamingOriginal)
-		want := "Camera original (DSC_xxxx.NEF)"
-		if got != want {
-			t.Fatalf("got %q, want %q", got, want)
-		}
-	})
-
-	t.Run("timestamp", func(t *testing.T) {
-		want := "Timestamp + sequence (0001-9999)"
-		got := namingStartupLine(config.NamingTimestamp)
-		if got != want {
-			t.Fatalf("got %q, want %q", got, want)
-		}
-	})
-}
-
 func TestNamingDisplayLine(t *testing.T) {
 	t.Parallel()
 

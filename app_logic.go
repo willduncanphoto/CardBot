@@ -138,7 +138,7 @@ func promptText(invalid, copiedAll bool) string {
 	}
 }
 
-// shouldResumeScanning reports whether the scanner spinner should restart.
+// shouldResumeScanning reports whether the scanner should resume waiting.
 func shouldResumeScanning(noCurrentCard bool, queueLen int) bool {
 	return noCurrentCard && queueLen == 0
 }
