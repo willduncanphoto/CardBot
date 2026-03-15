@@ -41,8 +41,6 @@ type app struct {
 	dryRun      bool
 	copiedModes map[string]bool    // modes completed this session
 	cardInvalid bool               // true when current card has no DCIM directory
-	spinStop    chan struct{}      // signals spinner goroutine to stop
-	spinDone    chan struct{}      // closed when spinner goroutine exits
 	scanCancel  context.CancelFunc // cancels the current displayCard goroutine
 }
 
@@ -56,42 +54,6 @@ func (a *app) drainInput() {
 		default:
 			return
 		}
-	}
-}
-
-// spinnerFrames are the classic spinner animation frames.
-var spinnerFrames = []string{"|", "/", "-", "\\"}
-
-// startSpinner starts the background spinner animation on the current line.
-func (a *app) startSpinner() {
-	a.stopSpinner() // ensure no stale spinner
-	a.spinStop = make(chan struct{})
-	a.spinDone = make(chan struct{})
-	go func() {
-		defer close(a.spinDone)
-		i := 0
-		ticker := time.NewTicker(100 * time.Millisecond)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-a.spinStop:
-				fmt.Print("\b \b")
-				return
-			case <-ticker.C:
-				fmt.Printf("\b%s", spinnerFrames[i%len(spinnerFrames)])
-				i++
-			}
-		}
-	}()
-}
-
-// stopSpinner stops the background spinner and waits for it to finish.
-func (a *app) stopSpinner() {
-	if a.spinStop != nil {
-		close(a.spinStop)
-		<-a.spinDone // wait for goroutine to clean up
-		a.spinStop = nil
-		a.spinDone = nil
 	}
 }
 
@@ -123,8 +85,6 @@ func (a *app) handleCardEvent(card *detect.Card) {
 
 	if a.currentCard == nil {
 		a.currentCard = card
-		a.stopSpinner()
-		fmt.Println() // newline after spinner
 		fmt.Printf("[%s] Card detected\n", ts())
 		a.logf("Card detected: %s", card.Path)
 		ctx, cancel := context.WithCancel(context.Background())
@@ -258,11 +218,10 @@ func (a *app) finishCard() {
 	}
 	a.mu.Unlock()
 
-	fmt.Printf("\n[%s] Scanning  ", ts())
-	a.startSpinner()
+	fmt.Printf("\n[%s] Waiting for card...\n", ts())
 }
 
-// resumeScanningIfIdle prints the scanning line and starts the spinner only if
+// resumeScanningIfIdle prints the waiting message only if
 // no current card is active and no queued cards are waiting.
 func (a *app) resumeScanningIfIdle() {
 	a.mu.Lock()
@@ -271,8 +230,7 @@ func (a *app) resumeScanningIfIdle() {
 	if !shouldStart {
 		return
 	}
-	fmt.Printf("\n[%s] Scanning  ", ts())
-	a.startSpinner()
+	fmt.Printf("\n[%s] Waiting for card...\n", ts())
 }
 
 func (a *app) handleRemoval(path string) {

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/illwill/cardbot/internal/analyze"
+	"github.com/illwill/cardbot/internal/config"
 	"github.com/illwill/cardbot/internal/detect"
 	"github.com/illwill/cardbot/internal/dotfile"
 	"github.com/illwill/cardbot/internal/ui"
@@ -72,6 +73,9 @@ func (a *app) printCardInfo(card *detect.Card, result *analyze.Result) {
 		fmt.Println("  Content:  (empty)")
 	}
 
+	// Config info (moved from startup, cleaner format)
+	fmt.Println()
+	fmt.Printf("  Copy to:  %s\n", config.ContractPath(a.cfg.Destination.Path))
 	count := 0
 	if result != nil {
 		count = result.FileCount
@@ -79,7 +83,7 @@ func (a *app) printCardInfo(card *detect.Card, result *analyze.Result) {
 	fmt.Printf("  Naming:   %s\n", namingDisplayLine(a.cfg.Naming.Mode, count))
 
 	if a.dryRun {
-		fmt.Printf("  Dest:     %s (dry-run)\n", a.cfg.Destination.Path)
+		fmt.Println("  Mode:     dry-run (no files will be copied)")
 	}
 
 	a.mu.Lock()
@@ -94,7 +98,7 @@ func (a *app) printCardInfo(card *detect.Card, result *analyze.Result) {
 		fmt.Printf("  Queue:    %d card%s waiting\n", queueLen, plural)
 	}
 
-	fmt.Println("────────────────────────────────────────")
+	fmt.Println()
 	a.printPrompt()
 }
 
@@ -103,7 +107,7 @@ func (a *app) printInvalidCardInfo(card *detect.Card) {
 	fmt.Println()
 	a.printCardHeader(card, card.Brand)
 	fmt.Printf("  Content:  (no DCIM — not a camera card)\n")
-	fmt.Println("────────────────────────────────────────")
+	fmt.Println()
 	a.printPrompt()
 }
 

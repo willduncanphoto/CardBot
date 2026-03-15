@@ -86,16 +86,18 @@ func namingModeLabel(mode string) string {
 }
 
 func namingStartupLine(mode string) string {
+	// Note: This is no longer used at startup (0.4.0 UX cleanup)
+	// Kept for reference, card info display uses namingDisplayLine instead
 	if config.NormalizeNamingMode(mode) == config.NamingTimestamp {
-		return "Naming: Timestamp + sequence (0001-9999)"
+		return "Timestamp + sequence (0001-9999)"
 	}
-	return "Naming: Camera original (DSC_xxxx.NEF)"
+	return "Camera original (DSC_xxxx.NEF)"
 }
 
 func namingDisplayLine(mode string, fileCount int) string {
 	_ = fileCount // reserved for future per-date digit detection
 	if config.NormalizeNamingMode(mode) != config.NamingTimestamp {
-		return "Camera original (DSC_0001.NEF)"
+		return "Camera original (DSC_xxxx.NEF)"
 	}
-	return "Timestamp + sequence (0001-9999)"
+	return "Timestamp + sequence (xxxx = 0001-9999)"
 }

@@ -5,14 +5,14 @@
 **Status:** Feature-complete for renaming. Ready for real-world validation.
 
 **What's Implemented:**
-- Two naming modes: Camera original (DSC_xxxx.NEF) vs Timestamp + sequence (YYMMDDTHHMMSS_xxx.NEF)
-- Fixed 3-digit sequence (001-999, loops back to 001)
+- Two naming modes: Camera original (DSC_xxxx.NEF) vs Timestamp + sequence (YYMMDDTHHMMSS_xxxx.NEF)
+- Fixed 4-digit sequence (0001-9999, loops back to 0001)
 - Chronological ordering by EXIF capture time
 - Dry-run with rename preview
 - Setup prompts explain the problem/solution
 
 **Known Limitations (Documented):**
-- 1000+ files in one day: sequence loops (001→999→001). Rare edge case.
+- 10000+ files in one day: sequence loops (0001→9999→0001). Very rare edge case.
 - Multi-camera same second: collision risk. See "Stuff to Think About" below.
 - Re-copy detection: uses file size, not rename mapping. May re-copy in timestamp mode.
 

@@ -141,9 +141,6 @@ func main() {
 	}
 	fmt.Println()
 
-	a.printf("[%s] Copy path %s\n", ts(), config.ContractPath(cfg.Destination.Path))
-	a.printf("[%s] %s\n", ts(), namingStartupLine(cfg.Naming.Mode))
-
 	if latest, ok := maybeCheckForUpdate(cfg, cfgPath, logger); ok {
 		a.printf("[%s] Update available: %s (you have %s)\n", ts(), latest, version)
 		a.printf("[%s] Run: cardbot self-update\n", ts())
@@ -153,8 +150,7 @@ func main() {
 		a.printf("[%s] Dry-run mode — no files will be copied\n", ts())
 	}
 
-	a.printf("[%s] Scanning  ", ts())
-	a.startSpinner()
+	a.printf("[%s] Waiting for card...\n", ts())
 
 	a.detector = detect.NewDetector()
 	if err := a.detector.Start(); err != nil {

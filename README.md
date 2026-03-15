@@ -118,10 +118,9 @@ Then insert a memory card.
 
 ```
 [2026-03-14T10:30:45] Starting CardBot 0.3.2...
-[2026-03-14T10:30:46] Copy path ~/Pictures/CardBot
-[2026-03-14T10:30:46] Naming: Timestamp + sequence (0001-9999)
-[2026-03-14T10:30:46] Card detected
-[2026-03-14T10:30:46] Scanning /Volumes/NIKON Z 9  ... 3051 files ✓ (0s)
+[2026-03-14T10:30:46] Waiting for card...
+[2026-03-14T10:30:48] Card detected
+[2026-03-14T10:30:48] Reading /Volumes/NIKON Z 9 ... 3051 files ✓ (0s)
 
   Status:   New
   Path:     /Volumes/NIKON Z 9
@@ -132,8 +131,10 @@ Then insert a memory card.
             2026-02-26      28.4 MB      1   NEF
 
   Total:    3048 photos, 0 videos, 96.0 GB
-  Naming:   Timestamp + sequence (0001-9999)
-────────────────────────────────────────
+
+  Copy to:  ~/Pictures/CardBot
+  Naming:   Timestamp + sequence (xxxx = 0001-9999)
+
 [a] Copy All  [s] Copy Selects  [p] Copy Photos  [v] Copy Videos  [e] Eject  [x] Exit  [?] Help  >
 ```
 
