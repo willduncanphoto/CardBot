@@ -92,8 +92,8 @@ func (a *app) handleCardEvent(card *detect.Card) {
 		// Format: "/Volumes/NAME" [disk identifier]
 		hw := card.GetHW()
 		diskID := ""
-		if hw != nil && hw.DeviceID != "" {
-			diskID = " [" + hw.DeviceID + "]"
+		if hw != nil && hw.DiskID() != "" {
+			diskID = " [" + hw.DiskID() + "]"
 		}
 		fmt.Printf("[%s] \"%s\"%s detected\n", ts(), strings.TrimSpace(card.Path), diskID)
 		a.logf("Card detected: %s", card.Path)

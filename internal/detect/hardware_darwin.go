@@ -59,7 +59,10 @@ type HardwareInfo struct {
 	SmartStatus string
 }
 
-// GetHardwareInfo attempts to retrieve hardware information for the given mount path.
+// DiskID returns a short platform-appropriate disk identifier.
+func (h *HardwareInfo) DiskID() string {
+	return h.DeviceID
+}
 func GetHardwareInfo(mountPath string) (*HardwareInfo, error) {
 	info := &HardwareInfo{}
 
