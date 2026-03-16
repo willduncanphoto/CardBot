@@ -150,7 +150,6 @@ func (a *App) StartScanning() {
 	}
 	s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	s.Prefix = fmt.Sprintf("[%s] Scanning ", ts())
-	s.FinalMSG = fmt.Sprintf("[%s] Scanning\n", ts())
 	s.Start()
 	a.spinner = s
 }

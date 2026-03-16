@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -18,10 +19,10 @@ const (
 	selfUpdateTimeout  = 60 * time.Second
 )
 
-// MaybeCheckForUpdate checks for updates on every app startup.
-func MaybeCheckForUpdate(cfg *config.Config, cfgPath string, logger *cblog.Logger, version string) (string, bool) {
-	fmt.Printf("[%s] Checking for updates\n", ts())
+var httpCodeRe = regexp.MustCompile(`http (\d{3})`)
 
+// MaybeCheckForUpdate checks for updates on every app startup.
+func MaybeCheckForUpdate(cfg *config.Config, cfgPath string, logger *cblog.Logger, version string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), updateCheckTimeout)
 	defer cancel()
 	res, err := update.CheckLatest(ctx, nil, update.DefaultAPIBase, update.DefaultRepo, version)
@@ -29,13 +30,39 @@ func MaybeCheckForUpdate(cfg *config.Config, cfgPath string, logger *cblog.Logge
 		if logger != nil {
 			logger.Printf("Update check failed: %v", err)
 		}
-		return "", false
+		return "", err
 	}
 
 	if res.Update {
-		return res.Latest, true
+		return res.Latest, nil
 	}
-	return "", false
+	return "", nil
+}
+
+// UpdateErrCode returns a short display code for an update check failure,
+// or an empty string if the error is a plain connectivity loss (no code needed).
+func UpdateErrCode(err error) string {
+	if err == nil {
+		return ""
+	}
+	// Deadline elapsed — plain no-signal, no code.
+	if errors.Is(err, context.DeadlineExceeded) {
+		return ""
+	}
+	s := strings.ToLower(err.Error())
+	// Network-level failures — no code needed.
+	if strings.Contains(s, "no such host") ||
+		strings.Contains(s, "no route to host") ||
+		strings.Contains(s, "network is unreachable") ||
+		strings.Contains(s, "i/o timeout") ||
+		strings.Contains(s, "connection refused") {
+		return ""
+	}
+	// HTTP status code — extract and return just the number.
+	if m := httpCodeRe.FindStringSubmatch(s); m != nil {
+		return m[1]
+	}
+	return "ERR"
 }
 
 // RunSelfUpdate performs a self-update to the latest version.

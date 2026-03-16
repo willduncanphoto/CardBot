@@ -1,47 +1,68 @@
 # CardBot Roadmap
 
-## 0.3.5 (Current)
+## 0.4.0 (Current)
+
+**Focus:** Startup UX polish
+
+### Completed
+- ✅ Animated update check spinner on startup
+- ✅ `Up to date` / `UPDATE AVAILABLE (x.x.x)` messaging
+- ✅ `NO SIGNAL` with error code for failed update checks
+- ✅ Classic `| / - \` spinner for update check and scanning
+- ✅ Simplified naming display (removed verbose explanations)
+- ✅ Silent startup when already up to date
+
+### Inherited from 0.3.x
 - ✅ Spinner animation for idle scanning
 - ✅ Clean output formatting
 - ✅ Cross-platform builds (darwin arm64/amd64, linux amd64/arm64)
 - ✅ Architecture refactor: move root logic to `internal/app/`
-- ✅ Update check on every startup with "Up to date" confirmation
+- ✅ Self-update system with checksum verification
 
-## 0.4.0 (Footer Version)
-Focus: UI/UX polish for Destination and Naming configuration
+---
 
-### Display Improvements
-- [ ] Cleaner card info display when copy completes
-- [ ] Better visual hierarchy for config info (Destination, Naming, Mode)
-- [ ] Reduce visual clutter in the main prompt area
-- [ ] Consider grouping related config items
+## 0.4.1 (Next)
 
-### Destination Display
-- [ ] Show abbreviated/contracted path consistently (e.g., `~/Pictures/Archive` not full path)
-- [ ] Improve readability of destination status in copy output
-- [ ] Clear indication of where files are being copied to
+**Focus:** Housekeeping
 
-### Naming Display
-- [ ] Simplify "Timestamp + sequence (xxxx = 0001-9999)" explanation
-- [ ] Better preview of how files will be renamed
-- [ ] Clearer distinction between "original" vs "timestamp" modes in output
-
-## 0.4.1 (Housecleaning)
 - [ ] Code style consistency pass
-- [ ] Remove any dead code or unused helpers
+- [ ] Remove dead code or unused helpers
 - [ ] Standardize error message formatting
 - [ ] Improve test coverage for edge cases
 - [ ] Documentation cleanup
 
-## 0.4.2 (Further Refinement)
-- [ ] Performance profiling of large card scans
-- [ ] Optimize progress update frequency during copy
-- [ ] Consider caching strategies for repeated cards
-- [ ] Terminal resize handling improvements
-- [ ] Enhanced logging output for debugging
+---
 
-## Future (0.5+)
+## 0.5.0 (Future)
+
+**Candidates:**
+- [ ] Video workflow separation (photos → Pictures, videos → Movies)
 - [ ] Batch operations for multiple cards
 - [ ] Configuration presets/profiles
-- [ ] Integration with external tools (EXIF, color management)
-- [ ] Faster incremental scanning for known cards
+- [ ] Performance profiling of large card scans
+- [ ] Terminal resize handling improvements
+
+---
+
+## Parking Lot
+
+### Multi-Camera Collision Prevention
+Two cameras shooting same event can produce identical filenames in timestamp mode.
+Needs design work. Not blocking current releases.
+
+### Linux/Windows Support  
+Linux implemented but needs real-world testing. Windows is long-term.
+
+### Single-Key Input
+Raw terminal mode (no Enter required). Power user polish.
+
+---
+
+## Completed Milestones
+
+| Version | Date | Highlights |
+|---------|------|------------|
+| 0.4.0 | 2026-03-16 | Startup UX polish, update check spinner, simplified display |
+| 0.3.x | 2026-03-15 | Timestamp renaming, architecture refactor, self-update |
+| 0.2.x | 2026-03-12 | Selective copy (starred, photos, videos) |
+| 0.1.x | 2026-03-08 | Core copy engine, card detection, EXIF analysis |

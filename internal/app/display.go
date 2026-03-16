@@ -75,7 +75,7 @@ func (a *App) printCardInfo(card *detect.Card, result *analyze.Result) {
 		fmt.Println("  Content:  (empty)")
 	}
 
-	// Config info (moved from startup, cleaner format)
+	// Print config info (moved from startup, cleaner format)
 	fmt.Println()
 	fmt.Printf("  Copy to:  %s\n", config.ContractPath(a.cfg.Destination.Path))
 	count := 0

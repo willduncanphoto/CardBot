@@ -157,7 +157,7 @@ func TestNamingDisplayLine(t *testing.T) {
 
 	t.Run("original", func(t *testing.T) {
 		got := namingDisplayLine(config.NamingOriginal, 3048)
-		want := "Camera original (DSC_xxxx.NEF)"
+		want := "Camera original"
 		if got != want {
 			t.Fatalf("got %q, want %q", got, want)
 		}
@@ -165,7 +165,7 @@ func TestNamingDisplayLine(t *testing.T) {
 
 	t.Run("timestamp", func(t *testing.T) {
 		got := namingDisplayLine(config.NamingTimestamp, 3048)
-		want := "Timestamp + sequence (xxxx = 0001-9999)"
+		want := "Timestamp + sequence"
 		if got != want {
 			t.Fatalf("got %q, want %q", got, want)
 		}
