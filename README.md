@@ -1,20 +1,23 @@
 # CardBot
 
-A CLI tool for camera memory cards.
+A CLI tool for reading and copying camera memory cards into my workflow.
 
 ## What CardBot Does
 
-CardBot generates a concise overview of your memory cards, provides modern copy tools and logging for advanced professional photography and video workflow.
+CardBot generates a concise overview of camera memory cards and provides modern copy tools and logging to save time in professional work environments.
 
 **Current capabilities:**
-- Detect CFexpress, XQD, and SD cards on macOS
-- Quickly analyze a card's content and technical information
-- Selective copy: choose to copy only Selects (starred), Photos, Videos, or All
-- Copy files to dated folders with size verification
-- Disk space preflight check before copy
-- Card copy status (.cardbot)
+- Detect camera memory card volumes on macOS
+- Quickly analyze content and technical information
+- Disk space preflight check before copy to Destination folder
+- Selective copy: Copy only Selects (Starred), Photos, Videos, or All
+- Create dated folder structure based on card content during ingestion
+- Copy files safely with size verification
+- Rename files
+- Remember card copy status
 - Queue multiple cards
-- Eject cards and cancel transfers safely
+- Cancel in-progress transfers safely
+- Eject cards safely (WHO DOES THAT?!)
 
 ## Platform Support
 
@@ -22,7 +25,7 @@ CardBot generates a concise overview of your memory cards, provides modern copy 
 |----------|--------|-------|
 | macOS (with Xcode) | [OK] Working | Native DiskArbitration, instant detection |
 | macOS (no Xcode) | [OK] Working | Polling fallback, 1s interval |
-| Linux | [--] Not supported | Wishlist |
+| Linux | [--] It might work | Planned |
 | Windows | [--] Not supported | Not Planned |
 
 ## Installation
@@ -276,10 +279,11 @@ MIT License — see [LICENSE](LICENSE) for details.
 - **CID on Linux:** The SD Card Identification register (manufacturer ID, serial, manufacturing date) is only accessible with direct SD card slots. USB readers hide it.
 - **Hardware size vs filesystem size:** macOS reports the card's raw physical capacity alongside the formatted filesystem size — this is why a "512GB" card shows ~477GB usable.
 - **Speed test:** CardBot includes a hidden `[t]` command that runs a 256MB sequential read/write benchmark on the card. Results are synthetic — read speeds in particular may be inflated by the OS page cache.
+- **Renaming:** `Naming:   Timestamp + sequence (xxxx = 0001-9999)` Can we just show the example name and what the next number in the sequence is as an example vs the timestamp+sequence. Would look cleaner.
 
 ## DISCLAIMER: Built with AI Coding Tools
 
 CardBot was built with the help of AI coding models and many open source projects. There is no way that I could build this alone. A special thanks goes out to **[Pi](https://shittycodingagent.ai)** — a terminal-based coding agent.
 
-- Website: [shittycodingagent.ai](https://shittycodingagent.ai)
+- Website: [pi.dev](https://pi.dev)
 - GitHub: [github.com/badlogic/pi-mono](https://github.com/badlogic/pi-mono)
