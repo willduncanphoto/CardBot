@@ -14,21 +14,12 @@ import (
 )
 
 const (
-	updateCheckInterval = 24 * time.Hour // Check for updates every 24 hours
-	updateCheckTimeout  = 5 * time.Second
-	selfUpdateTimeout   = 60 * time.Second
+	updateCheckTimeout = 5 * time.Second
+	selfUpdateTimeout  = 60 * time.Second
 )
 
-// MaybeCheckForUpdate checks for updates if the cache interval has elapsed.
+// MaybeCheckForUpdate checks for updates on every app startup.
 func MaybeCheckForUpdate(cfg *config.Config, cfgPath string, logger *cblog.Logger, version string) (string, bool) {
-	// Check if enough time has elapsed since last check
-	if !update.ShouldCheck(cfg.Update.LastCheck, time.Now(), updateCheckInterval) {
-		if logger != nil {
-			logger.Printf("Update check skipped (cached)")
-		}
-		return "", false
-	}
-
 	fmt.Printf("[%s] Checking for updates\n", ts())
 
 	ctx, cancel := context.WithTimeout(context.Background(), updateCheckTimeout)
@@ -39,14 +30,6 @@ func MaybeCheckForUpdate(cfg *config.Config, cfgPath string, logger *cblog.Logge
 			logger.Printf("Update check failed: %v", err)
 		}
 		return "", false
-	}
-
-	// Update the last check timestamp in config and save it
-	cfg.Update.LastCheck = time.Now().Format(time.RFC3339)
-	if cfgPath != "" {
-		if saveErr := config.Save(cfg, cfgPath); saveErr != nil && logger != nil {
-			logger.Printf("Warning: could not save update check timestamp: %v", saveErr)
-		}
 	}
 
 	if res.Update {
