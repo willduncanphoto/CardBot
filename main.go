@@ -6,14 +6,16 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/illwill/cardbot/internal/app"
 	"github.com/illwill/cardbot/internal/config"
 	cblog "github.com/illwill/cardbot/internal/log"
 	"github.com/illwill/cardbot/internal/pick"
 )
 
-const version = "0.4.0"
+const version = "0.4.1"
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "self-update" {
@@ -119,13 +121,31 @@ func main() {
 
 	a.Printf("[%s] CardBot %s\n", app.Ts(), version)
 
-	// Startup update-check stages.
-	a.Printf("[%s] Checking for updates\n", app.Ts())
+	// Startup update-check with spinner, then update the same line with result.
+	ts := app.Ts()
+	prefix := fmt.Sprintf("[%s] ", ts)
+	s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	s.Prefix = prefix + "Checking for updates "
+	s.Start()
 	latest, updateErr := app.MaybeCheckForUpdate(cfg, cfgPath, logger, version)
-	statusLine, actionLine := app.StartupUpdateMessages(latest, updateErr)
-	a.Printf("[%s] %s\n", app.Ts(), statusLine)
-	if actionLine != "" {
-		a.Printf("[%s] %s\n", app.Ts(), actionLine)
+	time.Sleep(500 * time.Millisecond) // ensure user sees activity
+	s.Stop()
+
+	// Update the same line with the result.
+	clearEOL := "\033[K"
+	var msg string
+	if updateErr != nil {
+		msg = "NO SIGNAL"
+	} else if latest != "" {
+		msg = fmt.Sprintf("UPDATE AVAILABLE (%s)", latest)
+	} else {
+		msg = "CardBot is up to date"
+	}
+	fmt.Printf("\r%s%s%s\n", prefix, msg, clearEOL)
+
+	// Print action line if update available.
+	if latest != "" && updateErr == nil {
+		fmt.Printf("%sRun: cardbot self-update\n", prefix)
 	}
 
 	if *flagDryRun {

@@ -107,7 +107,7 @@ cardbot
 
 Then insert a memory card.
 
-**First run** — CardBot will open a folder picker (macOS) or prompt for a destination path. The choice is saved to `~/.config/cardbot/config.json`.
+**First run** — CardBot will open a folder picker (macOS) or prompt for a copy destination path. The choice is saved to `~/.config/cardbot/config.json`.
 
 **Output example:**
 
@@ -130,7 +130,7 @@ Then insert a memory card.
   Copy to:  ~/Pictures/CardBot
   Naming:   Timestamp + sequence (xxxx = 0001-9999)
 
-[a] Copy All  [s] Copy Selects  [p] Copy Photos  [v] Copy Videos  [e] Eject  [x] Exit  [?] Help  >
+[a] Copy All  [s] Copy Selects  [e] Eject  [?] Help  >
 ```
 
 ### Commands
@@ -169,7 +169,7 @@ cardbot self-update
 - Replaces the current binary atomically
 - Prints a `sudo` command if your install path is not writable
 
-CardBot also performs a lightweight update check on startup.
+CardBot also checks for an update on startup.
 
 ## Copy
 
