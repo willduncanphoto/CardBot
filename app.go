@@ -137,7 +137,7 @@ func (a *app) displayCard(ctx context.Context, path string) {
 		return
 	}
 
-	fmt.Printf("\n[%s] Scanning", ts())
+	fmt.Printf("[%s] Scanning", ts())
 	a.logf("Reading %s", path)
 	scanStart := time.Now()
 	analyzer := analyze.New(path)
@@ -391,6 +391,7 @@ func (a *app) startScanning() {
 	}
 	s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	s.Prefix = fmt.Sprintf("[%s] Scanning ", ts())
+	s.FinalMSG = fmt.Sprintf("[%s] Scanning\n", ts())
 	s.Start()
 	a.spinner = s
 }
@@ -399,7 +400,6 @@ func (a *app) startScanning() {
 func (a *app) stopScanning() {
 	if a.spinner != nil {
 		a.spinner.Stop()
-		fmt.Print("\r")
 		a.spinner = nil
 	}
 }
