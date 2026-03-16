@@ -63,6 +63,8 @@ type HardwareInfo struct {
 func (h *HardwareInfo) DiskID() string {
 	return h.DeviceID
 }
+
+// GetHardwareInfo attempts to retrieve hardware information for the given mount path.
 func GetHardwareInfo(mountPath string) (*HardwareInfo, error) {
 	info := &HardwareInfo{}
 

@@ -52,13 +52,13 @@ type HardwareInfo struct {
 	ManufacturingDate string // MDT - 12 bits
 }
 
-// GetHardwareInfo attempts to retrieve hardware information.
-// On Linux with direct SD slot, CID is available.
 // DiskID returns a short platform-appropriate disk identifier.
 func (h *HardwareInfo) DiskID() string {
 	return h.DevicePath
 }
 
+// GetHardwareInfo attempts to retrieve hardware information.
+// On Linux with direct SD slot, CID is available.
 func GetHardwareInfo(mountPath string) (*HardwareInfo, error) {
 	info := &HardwareInfo{}
 
