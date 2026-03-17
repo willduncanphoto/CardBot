@@ -1,10 +1,10 @@
 # CardBot
 
-A CLI tool for reading and copying camera memory cards into my workflow.
+A CLI tool for reading and copying camera memory cards the way I want. Because I've been doing this for too long.
 
 ## What CardBot Does
 
-CardBot generates a concise overview of camera memory cards and provides modern copy tools and logging to save time in professional work environments.
+CardBot generates a concise overview of a memory card. CardBot makes offloading your work faster and safer.
 
 **Current capabilities:**
 - Detect camera memory card volumes on macOS
