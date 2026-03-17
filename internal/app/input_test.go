@@ -99,6 +99,78 @@ func TestCopyBlockReason(t *testing.T) {
 	}
 }
 
+func TestCopyReadinessReason(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		phase appPhase
+		want  string
+	}{
+		{phaseAnalyzing, "Still scanning card. Please wait."},
+		{phaseCopying, "Copy already in progress."},
+		{phaseShuttingDown, "Shutting down."},
+		{phaseScanning, "Card is not ready for copy."},
+	}
+
+	for _, tt := range tests {
+		if got := copyReadinessReason(tt.phase); got != tt.want {
+			t.Fatalf("copyReadinessReason(%v) = %q, want %q", tt.phase, got, tt.want)
+		}
+	}
+}
+
+func TestCanCopy(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		mode       string
+		phase      appPhase
+		invalid    bool
+		copiedAll  bool
+		copiedMode bool
+		result     *analyze.Result
+		wantOK     bool
+		wantReason string
+	}{
+		{
+			name:       "not ready analyzing",
+			mode:       "all",
+			phase:      phaseAnalyzing,
+			wantOK:     false,
+			wantReason: "Still scanning card. Please wait.",
+		},
+		{
+			name:       "ready blocked by invalid",
+			mode:       "all",
+			phase:      phaseReady,
+			invalid:    true,
+			wantOK:     false,
+			wantReason: "No media found on this card.",
+		},
+		{
+			name:       "ready allowed",
+			mode:       "photos",
+			phase:      phaseReady,
+			result:     &analyze.Result{PhotoCount: 2},
+			wantOK:     true,
+			wantReason: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ok, reason := canCopy(tt.mode, tt.phase, tt.invalid, tt.copiedAll, tt.copiedMode, tt.result)
+			if ok != tt.wantOK {
+				t.Fatalf("canCopy ok = %v, want %v", ok, tt.wantOK)
+			}
+			if reason != tt.wantReason {
+				t.Fatalf("canCopy reason = %q, want %q", reason, tt.wantReason)
+			}
+		})
+	}
+}
+
 func TestPromptText(t *testing.T) {
 	t.Parallel()
 

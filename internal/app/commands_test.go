@@ -66,3 +66,35 @@ func TestHandleCopySuccess_RealCopy_WritesDotfileAndMarksMode(t *testing.T) {
 		t.Fatalf("dotfile destination = %q, want %q", status.Entries[0].Destination, dest)
 	}
 }
+
+func TestHandleCopySuccess_UsesInjectedDotfileWriter(t *testing.T) {
+	t.Parallel()
+
+	cardPath := t.TempDir()
+	a := &App{copiedModes: make(map[string]bool)}
+	card := &detect.Card{Path: cardPath}
+
+	called := 0
+	var got dotfile.WriteOptions
+	a.writeDotfile = func(opts dotfile.WriteOptions) error {
+		called++
+		got = opts
+		return nil
+	}
+
+	a.handleCopySuccess(card, "photos", "/dest/path", &cardcopy.Result{
+		FilesCopied: 5,
+		BytesCopied: 4096,
+		Elapsed:     time.Second,
+	}, false, 0)
+
+	if called != 1 {
+		t.Fatalf("dotfile writer called %d times, want 1", called)
+	}
+	if got.Mode != "photos" {
+		t.Fatalf("mode = %q, want %q", got.Mode, "photos")
+	}
+	if got.Destination != "/dest/path" {
+		t.Fatalf("destination = %q, want %q", got.Destination, "/dest/path")
+	}
+}
