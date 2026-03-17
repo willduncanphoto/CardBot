@@ -126,6 +126,32 @@ func copyBlockReason(mode string, invalid, copiedAll, copiedMode bool, result *a
 	return ""
 }
 
+// copyReadinessReason returns a user-facing message when the app phase is not
+// ready to accept copy commands.
+func copyReadinessReason(phase appPhase) string {
+	switch phase {
+	case phaseAnalyzing:
+		return "Still scanning card. Please wait."
+	case phaseCopying:
+		return "Copy already in progress."
+	case phaseShuttingDown:
+		return "Shutting down."
+	default:
+		return "Card is not ready for copy."
+	}
+}
+
+// canCopy determines whether a copy command should run.
+func canCopy(mode string, phase appPhase, invalid, copiedAll, copiedMode bool, result *analyze.Result) (bool, string) {
+	if phase != phaseReady {
+		return false, copyReadinessReason(phase)
+	}
+	if reason := copyBlockReason(mode, invalid, copiedAll, copiedMode, result); reason != "" {
+		return false, reason
+	}
+	return true, ""
+}
+
 // promptText returns the command prompt for the current card state.
 func promptText(invalid, copiedAll bool) string {
 	switch {

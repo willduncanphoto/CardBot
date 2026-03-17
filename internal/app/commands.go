@@ -57,7 +57,11 @@ func (a *App) copyFiltered(card *detect.Card, mode string) {
 
 	a.mu.Lock()
 	analyzeResult := a.lastResult
+	if a.currentCard != nil && a.currentCard.Path == card.Path {
+		a.setPhaseLocked(phaseCopying)
+	}
 	a.mu.Unlock()
+	defer a.finishCopyPhase(card.Path)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -92,8 +96,13 @@ func (a *App) copyFiltered(card *detect.Card, mode string) {
 	lastUpdate := time.Now()
 	previewPrinted := 0
 	previewHidden := 0
+	runner := a.runCopy
+	if runner == nil {
+		runner = defaultCopyRunner
+	}
+
 	go func() {
-		r, err := cardcopy.Run(ctx, opts, func(p cardcopy.Progress) {
+		r, err := runner(ctx, opts, func(p cardcopy.Progress) {
 			// In dry-run mode, print rename mappings (capped for large cards).
 			if isDryRun {
 				if p.SourceFile == "" {
@@ -218,6 +227,7 @@ func (a *App) copyFiltered(card *detect.Card, mode string) {
 			// All other input is silently ignored during copy.
 
 		case <-a.sigChan:
+			a.setPhase(phaseShuttingDown)
 			cancel()
 			<-doneCh // wait for copy goroutine to finish
 			fmt.Println("\nShutting down...")
@@ -269,7 +279,11 @@ func (a *App) handleCopySuccess(card *detect.Card, mode, destBase string, result
 		elapsed,
 		speed)
 
-	dotErr := dotfile.Write(dotfile.WriteOptions{
+	writer := a.writeDotfile
+	if writer == nil {
+		writer = defaultDotfileWriter
+	}
+	dotErr := writer(dotfile.WriteOptions{
 		CardPath:       card.Path,
 		Destination:    destBase,
 		Mode:           mode,

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/illwill/cardbot/internal/analyze"
 	"github.com/illwill/cardbot/internal/detect"
 )
 
@@ -25,6 +24,7 @@ func (a *App) handleCardEvent(card *detect.Card) {
 
 	if a.currentCard == nil {
 		a.currentCard = card
+		a.setPhaseLocked(phaseAnalyzing)
 		hw := card.GetHW()
 		diskID := ""
 		if hw != nil {
@@ -80,11 +80,16 @@ func (a *App) displayCard(ctx context.Context, path string) {
 	if ctx.Err() != nil {
 		return
 	}
+	a.setPhase(phaseAnalyzing)
 
 	fmt.Printf("[%s] Scanning", ts())
 	a.logf("Reading %s", path)
 	scanStart := time.Now()
-	analyzer := analyze.New(path)
+	newAnalyzer := a.newAnalyzer
+	if newAnalyzer == nil {
+		newAnalyzer = defaultAnalyzerFactory
+	}
+	analyzer := newAnalyzer(path)
 	analyzer.SetWorkers(a.cfg.Advanced.ExifWorkers)
 	analyzer.OnProgress(func(count int) {
 		if count%100 == 0 {
@@ -107,6 +112,7 @@ func (a *App) displayCard(ctx context.Context, path string) {
 				return
 			}
 			a.cardInvalid = true
+			a.setPhaseLocked(phaseReady)
 			card := a.currentCard
 			a.mu.Unlock()
 			fmt.Printf("\r[%s] Card is invalid (no DCIM found)\n", ts())
@@ -145,6 +151,7 @@ func (a *App) displayCard(ctx context.Context, path string) {
 		return
 	}
 	a.lastResult = result
+	a.setPhaseLocked(phaseReady)
 	card := a.currentCard
 	a.mu.Unlock()
 	a.printCardInfo(card, result)
@@ -160,6 +167,7 @@ func (a *App) finishCard() {
 	a.lastResult = nil
 	a.copiedModes = make(map[string]bool)
 	a.cardInvalid = false
+	a.setPhaseLocked(phaseAfterFinish(len(a.cardQueue)))
 
 	if len(a.cardQueue) > 0 {
 		nextCard := a.cardQueue[0]
@@ -202,12 +210,14 @@ func (a *App) handleRemoval(path string) {
 		a.copiedModes = make(map[string]bool)
 		a.cardInvalid = false
 		hasQueue := len(a.cardQueue) > 0
+		a.setPhaseLocked(phaseAfterFinish(len(a.cardQueue)))
 		var nextCard *detect.Card
 		var nextCtx context.Context
 		if hasQueue {
 			nextCard = a.cardQueue[0]
 			a.cardQueue = a.cardQueue[1:]
 			a.currentCard = nextCard
+			a.setPhaseLocked(phaseAnalyzing)
 			var cancel context.CancelFunc
 			nextCtx, cancel = context.WithCancel(context.Background())
 			a.scanCancel = cancel
@@ -317,13 +327,14 @@ func (a *App) cancelCard() {
 
 func (a *App) handleCopyCmd(card *detect.Card, mode string) {
 	a.mu.Lock()
+	phase := a.phase
 	invalid := a.cardInvalid
 	copiedAll := a.copiedModes["all"]
 	copiedMode := a.copiedModes[mode]
 	analyzeResult := a.lastResult
 	a.mu.Unlock()
 
-	if reason := copyBlockReason(mode, invalid, copiedAll, copiedMode, analyzeResult); reason != "" {
+	if ok, reason := canCopy(mode, phase, invalid, copiedAll, copiedMode, analyzeResult); !ok {
 		fmt.Printf("\n[%s] %s\n", ts(), reason)
 		a.printPrompt()
 		return

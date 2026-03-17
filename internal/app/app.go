@@ -25,7 +25,7 @@ const (
 
 // App is the main CardBot application.
 type App struct {
-	detector    *detect.Detector
+	detector    cardDetector
 	currentCard *detect.Card
 	lastResult  *analyze.Result // analysis result for currentCard
 	cardQueue   []*detect.Card
@@ -42,6 +42,12 @@ type App struct {
 	scanCancel  context.CancelFunc // cancels the current displayCard goroutine
 	spinner     *spinner.Spinner   // scanner spinner
 	version     string             // app version for display and dotfile
+	phase       appPhase           // explicit runtime phase
+
+	newDetector  detectorFactory
+	newAnalyzer  analyzerFactory
+	runCopy      copyRunner
+	writeDotfile dotfileWriter
 }
 
 // Config holds the configuration for creating a new App.
@@ -50,6 +56,12 @@ type Config struct {
 	Logger  *cblog.Logger
 	DryRun  bool
 	Version string
+
+	// Optional dependency overrides for tests.
+	newDetector  detectorFactory
+	newAnalyzer  analyzerFactory
+	runCopy      copyRunner
+	writeDotfile dotfileWriter
 }
 
 // New creates a new App instance.
@@ -59,16 +71,38 @@ func New(c Config) *App {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	inputDone := make(chan struct{})
 
+	newDetector := c.newDetector
+	if newDetector == nil {
+		newDetector = defaultDetectorFactory
+	}
+	newAnalyzer := c.newAnalyzer
+	if newAnalyzer == nil {
+		newAnalyzer = defaultAnalyzerFactory
+	}
+	runCopy := c.runCopy
+	if runCopy == nil {
+		runCopy = defaultCopyRunner
+	}
+	writeDotfile := c.writeDotfile
+	if writeDotfile == nil {
+		writeDotfile = defaultDotfileWriter
+	}
+
 	return &App{
-		cardQueue:   make([]*detect.Card, 0),
-		cfg:         c.Cfg,
-		logger:      c.Logger,
-		inputChan:   inputChan,
-		sigChan:     sigChan,
-		inputDone:   inputDone,
-		dryRun:      c.DryRun,
-		copiedModes: make(map[string]bool),
-		version:     c.Version,
+		cardQueue:    make([]*detect.Card, 0),
+		cfg:          c.Cfg,
+		logger:       c.Logger,
+		inputChan:    inputChan,
+		sigChan:      sigChan,
+		inputDone:    inputDone,
+		dryRun:       c.DryRun,
+		copiedModes:  make(map[string]bool),
+		version:      c.Version,
+		phase:        phaseScanning,
+		newDetector:  newDetector,
+		newAnalyzer:  newAnalyzer,
+		runCopy:      runCopy,
+		writeDotfile: writeDotfile,
 	}
 }
 
@@ -114,7 +148,11 @@ func (a *App) drainInput() {
 
 // Run starts the main event loop. It blocks until shutdown.
 func (a *App) Run() error {
-	a.detector = detect.NewDetector()
+	newDetector := a.newDetector
+	if newDetector == nil {
+		newDetector = defaultDetectorFactory
+	}
+	a.detector = newDetector()
 	if err := a.detector.Start(); err != nil {
 		return err
 	}
@@ -134,6 +172,7 @@ func (a *App) Run() error {
 			a.handleInput(input)
 
 		case <-a.sigChan:
+			a.setPhase(phaseShuttingDown)
 			a.stopScanning()
 			fmt.Println("\nShutting down...")
 			a.logf("Shutting down")
@@ -152,6 +191,7 @@ func (a *App) StartScanning() {
 	s.Prefix = fmt.Sprintf("[%s] Scanning ", ts())
 	s.Start()
 	a.spinner = s
+	a.setPhase(phaseScanning)
 }
 
 // stopScanning stops and clears the scanning spinner.
