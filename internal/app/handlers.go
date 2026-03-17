@@ -82,7 +82,8 @@ func (a *App) displayCard(ctx context.Context, path string) {
 	}
 	a.setPhase(phaseAnalyzing)
 
-	fmt.Printf("[%s] Scanning", ts())
+	scanTS := ts()
+	fmt.Printf("[%s] Scanning", scanTS)
 	a.logf("Reading %s", path)
 	scanStart := time.Now()
 	newAnalyzer := a.newAnalyzer
@@ -93,7 +94,7 @@ func (a *App) displayCard(ctx context.Context, path string) {
 	analyzer.SetWorkers(a.cfg.Advanced.ExifWorkers)
 	analyzer.OnProgress(func(count int) {
 		if count%100 == 0 {
-			fmt.Printf("\r[%s] Scanning %d files", ts(), count)
+			fmt.Printf("\r[%s] Scanning %d files", scanTS, count)
 		}
 	})
 
@@ -140,8 +141,8 @@ func (a *App) displayCard(ctx context.Context, path string) {
 	if result != nil {
 		total = result.FileCount
 	}
-	fmt.Printf("\r[%s] Scanning %d files (%ds) ✓\n", ts(), total, secs)
-	fmt.Printf("[%s] Scan completed\n", ts())
+	fmt.Printf("\r[%s] Scanning %d files ✓\n", scanTS, total)
+	fmt.Printf("[%s] Scan completed in %ds\n", scanTS, secs)
 	a.logf("Scan completed: %s — %d files in %ds", path, total, secs)
 	fmt.Println()
 
