@@ -1,19 +1,19 @@
 # CardBot
 
-A CLI tool for reading and copying camera memory cards the way I want. Because I've been doing this for too long.
+A CLI tool for reading and copying camera memory cards the way I want.
 
 ## What CardBot Does
 
-CardBot generates a concise overview of a memory card. CardBot makes offloading your work faster and safer.
+CardBot generates a concise overview a memory card and provides modern copy tools to makes offloading your work faster and safer.
 
 **Current capabilities:**
 - Detect camera memory card volumes on macOS
-- Quickly analyze content and technical information
-- Disk space preflight check before copy to Destination folder
-- Selective copy: Copy only Selects (Starred), Photos, Videos, or All
+- Quickly analyze card content and technical information
+- Disk space preflight check before copy to destination
+- Selective copy: copy only selects (Starred), photos, videos, or all
 - Create dated folder structure based on card content during ingestion
 - Copy files safely with size verification
-- Rename files
+- Rename files to a ISO 8601 format
 - Remember card copy status
 - Queue multiple cards
 - Cancel in-progress transfers safely
@@ -117,7 +117,6 @@ Then insert a memory card.
 ```
 [2026-03-17T10:30:44] CardBot 0.4.7
 [2026-03-17T10:30:44] CardBot is up to date
-
 [2026-03-17T10:30:51] Scanning started
 [2026-03-17T10:30:51] "/Volumes/NIKON Z 9" (disk4s1) detected
 [2026-03-17T10:30:51] Scanning 3051 files ✓
@@ -203,7 +202,7 @@ Press `a` to copy all files, or use selective copy modes to copy only specific f
 **After copy:**
 - CardBot writes a `.cardbot` file to the card
 - On re-insert, the card shows `Status: Copy completed on 2026-03-12T12:31:05` instead of `Status: New`
-- Re-copying the same card skips files that already exist with the correct size
+- Re-copying the same card skips files that already exist with the correct size (untested)
 
 **Invalid cards:**
 - Cards without a DCIM folder show "Card is invalid (no DCIM found)" with basic info and eject/exit options
@@ -259,36 +258,53 @@ Run `cardbot --setup` to change rerun the config setup. Run `cardbot --reset` to
 
 | Version | Focus | Status |
 |---------|-------|--------|
-| **0.5.0** | Copy UI/UX — ETA, resume, preview, better progress | Planned |
-| **0.6.0** | Config profiles and batch operations | Planned |
-| **0.7.0** | *Open — candidate: Linux real-world testing* | — |
-| **0.8.0** | Copyright metadata injection (EXIF/XMP) | Planned |
+| **0.5.0** | Copy operations | Planned |
+| **0.6.0** | Copyright injection | Planned |
+| **0.7.0** | *Open — TBD* | — |
+| **0.8.0** | *Open — TBD* | — |
+| **0.9.0** | Video ingestion path | Planned |
+| **0.10.0** | Copyright metadata injection (EXIF/XMP) | Planned |
 
-### 0.5.0 — Copy UI/UX
-- ETA during copy (time remaining estimate)
+### 0.5.0 — Copy operations
+- Progress and time remaining estimate
+- Live rename status scrolling by cause I hate myself 
+    - DCM_1384.NEF --> [YYYYMMDDTHHMMSS_SEQN.NEF]
 - Resume interrupted copies (partial copy tracking)
-- Pre-copy preview (what will be copied before starting)
-- Better multi-line progress display
 - Post-copy summary (what was copied, skipped, average speed)
-- Video and photo destination separation
+- Robust logging and breadcrumbs
+- Wire up card status
+- Think more about repeat file and overlapping collisions
 
-### 0.6.0 — Advanced Features
-- Configuration presets/profiles (wedding, portrait, personal)
-- Quick settings toggle mid-session
-- Batch operations for multiple cards
-- Performance profiling and optimization
-
-### 0.8.0 — Copyright Injection
-- EXIF/XMP copyright metadata injection during copy
-- Configurable copyright presets
+### 0.6.0 — Copyright safety net
+- EXIF/XMP copyright injection on copy
 - Smart date handling (copyright year matches capture year)
-- Selective injection (enable/disable per copy mode)
+- Selective injection (enable/disable)
+- Configure copyright how?
 
-### Future Goals
-- Single-key input (raw terminal mode, no Enter required)
-- Windows support
+### 0.7.0 — TBD
+- item here
+- another here
+- sigh
+
+### 0.8.0 — TBD
+- item here
+- another here
+- sigh
+
+# 0.9.0 - Video ingestion 101
+- Split photo and video destination paths
+- Research video naming standards or just stick to our ISO 1806
+- Anything we can generate for better logging? session type? 
+
+### Maybe Someday
+- Windows
 - Checksum verification (xxhash)
-- Network destinations (SFTP, S3)
+- Network destinations (SFTP, S3, Wire Service integration)
+- P2P workflow
+- Camera datetime drift detection and alert
+- Some rsync features because I love it
+- Audio file to caption transciption
+- Caption injection (mininal edge case request)
 
 ## Size
 
@@ -308,7 +324,9 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ## DISCLAIMER: Built with AI Coding Tools
 
-CardBot was built with the help of AI coding models and many open source projects. There is no way that I could build this alone. A special thanks goes out to **[Pi](https://shittycodingagent.ai)** — a terminal-based coding agent.
+CardBot was built with the help of AI coding models and many open source projects. There is no way that I could build this alone.
+
+A special thanks goes out to **[Pi](https://shittycodingagent.ai)** — a terminal-based coding agent.
 
 - Website: [pi.dev](https://pi.dev)
 - GitHub: [github.com/badlogic/pi-mono](https://github.com/badlogic/pi-mono)
