@@ -260,8 +260,8 @@ Run `cardbot --setup` to change rerun the config setup. Run `cardbot --reset` to
 | Version | Focus | Status |
 |---------|-------|--------|
 | **0.5.0** | Copy UI/UX — ETA, resume, preview, better progress | Planned |
-| **0.6.0** | Single-key input (raw terminal, no Enter required) | Planned |
-| **0.7.0** | Config profiles and batch operations | Planned |
+| **0.6.0** | Config profiles and batch operations | Planned |
+| **0.7.0** | *Open — candidate: Linux real-world testing* | — |
 | **0.8.0** | Copyright metadata injection (EXIF/XMP) | Planned |
 
 ### 0.5.0 — Copy UI/UX
@@ -270,14 +270,11 @@ Run `cardbot --setup` to change rerun the config setup. Run `cardbot --reset` to
 - Pre-copy preview (what will be copied before starting)
 - Better multi-line progress display
 - Post-copy summary (what was copied, skipped, average speed)
+- Video and photo destination separation
 
-### 0.6.0 — Single-Key Input
-- Raw terminal mode (no Enter required)
-- Arrow key navigation for menus
-- Power user polish
-
-### 0.7.0 — Advanced Features
+### 0.6.0 — Advanced Features
 - Configuration presets/profiles (wedding, portrait, personal)
+- Quick settings toggle mid-session
 - Batch operations for multiple cards
 - Performance profiling and optimization
 
@@ -287,7 +284,8 @@ Run `cardbot --setup` to change rerun the config setup. Run `cardbot --reset` to
 - Smart date handling (copyright year matches capture year)
 - Selective injection (enable/disable per copy mode)
 
-### Maybe Someday
+### Future Goals
+- Single-key input (raw terminal mode, no Enter required)
 - Windows support
 - Checksum verification (xxhash)
 - Network destinations (SFTP, S3)
