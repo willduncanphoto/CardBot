@@ -1,18 +1,26 @@
 # CardBot
 
-A CLI tool for reading and copying camera memory cards the way I want.
+A CLI tool for reading and copying camera memory cards.
+
+## DISCLAIMER: Built with AI Coding Tools
+
+CardBot was built with the help of AI coding tools and many open source projects. There is no way that I could build this alone. There is no warranty. This is an experiment.
+
+A special thanks goes out to **[Pi](https://shittycodingagent.ai)** — a terminal-based coding agent.
+
+- Website: [pi.dev](https://pi.dev)
+- GitHub: [github.com/badlogic/pi-mono](https://github.com/badlogic/pi-mono)
 
 ## What CardBot Does
 
 CardBot generates a concise overview a memory card and provides modern copy tools to makes offloading your work faster and safer.
 
 **Current capabilities:**
-- Detect camera memory card volumes on macOS
-- Quickly analyze card content and technical information
-- Disk space preflight check before copy to destination
+- Detect camera memory cards on macOS
+- Quickly analyze card content
+- Disk space preflight check before copy
 - Selective copy: copy only selects (Starred), photos, videos, or all
-- Create dated folder structure based on card content during ingestion
-- Copy files safely with size verification
+- Copy to dated folders
 - Rename files to a ISO 8601 format
 - Remember card copy status
 - Queue multiple cards
@@ -258,59 +266,22 @@ Run `cardbot --setup` to change rerun the config setup. Run `cardbot --reset` to
 
 | Version | Focus | Status |
 |---------|-------|--------|
-| **0.5.0** | Copy operations | Planned |
-| **0.6.0** | Copyright injection | Planned |
-| **0.7.0** | *Open — TBD* | — |
-| **0.8.0** | *Open — TBD* | — |
-| **0.9.0** | Video ingestion path | Planned |
-| **0.10.0** | Copyright metadata injection (EXIF/XMP) | Planned |
-
-### 0.5.0 — Copy operations
-- Progress and time remaining estimate
-- Live rename status scrolling by cause I hate myself 
-    - DCM_1384.NEF --> [YYYYMMDDTHHMMSS_SEQN.NEF]
-- Resume interrupted copies (partial copy tracking)
-- Post-copy summary (what was copied, skipped, average speed)
-- Robust logging and breadcrumbs
-- Wire up card status
-- Think more about repeat file and overlapping collisions
-
-### 0.6.0 — Copyright safety net
-- EXIF/XMP copyright injection on copy
-- Smart date handling (copyright year matches capture year)
-- Selective injection (enable/disable)
-- Configure copyright how?
-
-### 0.7.0 — TBD
-- item here
-- another here
-- sigh
-
-### 0.8.0 — TBD
-- item here
-- another here
-- sigh
-
-# 0.9.0 - Video ingestion 101
-- Split photo and video destination paths
-- Research video naming standards or just stick to our ISO 1806
-- Anything we can generate for better logging? session type? 
+| **0.4.x** | Housekeeping & stability | Current |
+| **0.5.0** | Copy operations improvements | Planned |
+| **0.6.0** | Copyright metadata injection | Planned |
 
 ### Maybe Someday
-- Windows
+- Windows support
 - Checksum verification (xxhash)
-- Network destinations (SFTP, S3, Wire Service integration)
-- P2P workflow
-- Camera datetime drift detection and alert
-- Some rsync features because I love it
-- Audio file to caption transciption
-- Caption injection (mininal edge case request)
+- Network destinations (SFTP, S3)
+- Camera datetime drift detection
+- Audio file transcription
 
 ## Size
 
-- Binary: ~3.2 MB (stripped)
-- Source: ~5,400 lines of Go across 55 files
-- Tests: ~3,800 lines, 135 tests across 9 packages
+- Binary: ~10 MB (stripped)
+- Source: ~9,200 lines of Go across 55 files
+- Tests: 137 tests across 10 packages
 
 ## License
 
@@ -321,12 +292,3 @@ MIT License — see [LICENSE](LICENSE) for details.
 - **CID on Linux:** The SD Card Identification register (manufacturer ID, serial, manufacturing date) is only accessible with direct SD card slots. USB readers hide it.
 - **Hardware size vs filesystem size:** macOS reports the card's raw physical capacity alongside the formatted filesystem size — this is why a "512GB" card shows ~477GB usable.
 - **Speed test:** CardBot includes a hidden `[t]` command that runs a 256MB sequential read/write benchmark on the card. Results are synthetic — read speeds in particular may be inflated by the OS page cache.
-
-## DISCLAIMER: Built with AI Coding Tools
-
-CardBot was built with the help of AI coding models and many open source projects. There is no way that I could build this alone.
-
-A special thanks goes out to **[Pi](https://shittycodingagent.ai)** — a terminal-based coding agent.
-
-- Website: [pi.dev](https://pi.dev)
-- GitHub: [github.com/badlogic/pi-mono](https://github.com/badlogic/pi-mono)
