@@ -15,7 +15,7 @@ A special thanks goes out to **[Pi](https://shittycodingagent.ai)** — a termin
 
 CardBot generates a concise overview a memory card and provides modern copy tools to makes offloading your work faster and safer.
 
-![alt text](<screenshot.png>)
+![alt text](screenshot.png)
 
 **Current capabilities:**
 - Detect camera memory cards on macOS
