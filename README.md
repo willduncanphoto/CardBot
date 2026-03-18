@@ -6,16 +6,16 @@ A CLI tool for camera memory cards.
 
 ## DISCLAIMER: Built with AI Coding Tools
 
-CardBot was built with the help of AI coding tools and many open source projects. There is no warranty. This is an experiment in LLM slop.
+CardBot was built with the help of AI coding tools and many open source projects. This is an experiment in LLM slop. There is no warranty.
 
 A special thanks goes out to **[Pi](https://shittycodingagent.ai)** — a terminal-based coding agent.
 
 - Website: [pi.dev](https://pi.dev)
 - GitHub: [github.com/badlogic/pi-mono](https://github.com/badlogic/pi-mono)
 
-## What CardBot Does
+## What CardBot does
 
-CardBot generates a concise overview a memory card and provides modern copy tools to makes offloading your work faster and safer.
+CardBot generates a concise overview camera memory cards and provides modern copy to offload media to a local destination.
 
 **Current capabilities:**
 - Detect camera memory cards on macOS
@@ -120,7 +120,9 @@ cardbot
 
 Then insert a memory card.
 
-**First run** — CardBot will open a folder picker (macOS) or prompt for a copy destination path. The choice is saved to `~/.config/cardbot/config.json`.
+**First run** — CardBot will open a folder picker (macOS), ask for naming mode, ask whether to auto-launch on card insert, and ask whether daemon mode should start automatically at login. Choices are saved to `~/.config/cardbot/config.json`.
+
+To change these later, run `cardbot --setup` again (it reworks all setup choices each time).
 
 **Output example:**
 
@@ -169,9 +171,37 @@ Press `?` to see all available commands.
 |------|-------------|
 | `--dest <path>` | Override destination path for this session |
 | `--dry-run` | Scan cards but do not copy files |
-| `--setup` | Re-run destination setup |
+| `--daemon` | Run headless daemon mode (watch for cards in background) |
+| `--setup` | Re-run setup prompts (destination, naming, daemon, start-at-login) |
 | `--reset` | Clear saved config |
 | `--version` | Print version and exit |
+
+### Background Daemon
+
+Run CardBot in headless background mode:
+
+```bash
+cardbot --daemon
+```
+
+Install/uninstall login auto-start on macOS:
+
+```bash
+cardbot install-daemon
+cardbot uninstall-daemon
+```
+
+Check daemon + LaunchAgent status:
+
+```bash
+cardbot daemon-status
+cardbot daemon-status --json
+```
+
+This mode watches for card insertions without showing the interactive prompt.
+It launches your preferred terminal app from config (`daemon.terminal_app`).
+Advanced command templates can be set with `daemon.launch_args`
+using `{{cardbot_binary}}` and `{{mount_path}}` placeholders.
 
 ### Update Command
 
@@ -251,6 +281,12 @@ Config is stored at `~/.config/cardbot/config.json`:
   "naming": {
     "mode": "original"
   },
+  "daemon": {
+    "enabled": false,
+    "start_at_login": false,
+    "terminal_app": "Terminal",
+    "launch_args": []
+  },
   "output": {
     "color": true
   },
@@ -262,7 +298,7 @@ Config is stored at `~/.config/cardbot/config.json`:
 }
 ```
 
-Run `cardbot --setup` to change rerun the config setup. Run `cardbot --reset` to clear all saved config.
+Run `cardbot --setup` to re-run setup and change saved preferences. Run `cardbot --reset` to clear all saved config.
 
 ## Roadmap
 

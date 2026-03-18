@@ -43,6 +43,7 @@ type App struct {
 	spinner     *spinner.Spinner   // scanner spinner
 	version     string             // app version for display and dotfile
 	phase       appPhase           // explicit runtime phase
+	targetPath  string             // optional: skip scanning and target this path directly
 
 	newDetector  detectorFactory
 	newAnalyzer  analyzerFactory
@@ -52,10 +53,11 @@ type App struct {
 
 // Config holds the configuration for creating a new App.
 type Config struct {
-	Cfg     *config.Config
-	Logger  *cblog.Logger
-	DryRun  bool
-	Version string
+	Cfg        *config.Config
+	Logger     *cblog.Logger
+	DryRun     bool
+	Version    string
+	TargetPath string // optional: skip scanning and target this path directly
 
 	// Optional dependency overrides for tests.
 	newDetector  detectorFactory
@@ -99,6 +101,7 @@ func New(c Config) *App {
 		copiedModes:  make(map[string]bool),
 		version:      c.Version,
 		phase:        phaseScanning,
+		targetPath:   c.TargetPath,
 		newDetector:  newDetector,
 		newAnalyzer:  newAnalyzer,
 		runCopy:      runCopy,
@@ -155,6 +158,11 @@ func (a *App) Run() error {
 	defer a.detector.Stop()
 
 	go readInput(a.inputChan, a.inputDone)
+
+	// If a target path was specified, synthesize a card event immediately.
+	if a.targetPath != "" {
+		a.launchTargetPath(a.targetPath)
+	}
 
 	for {
 		select {

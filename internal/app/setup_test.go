@@ -21,6 +21,8 @@ func TestRunSetup_WritesNamingModeToConfig(t *testing.T) {
 		cfgPath,
 		func(string) string { return "~/Pictures/Jobs" },
 		func(string) string { return config.NamingTimestamp },
+		func(bool) bool { return true },
+		func(bool) bool { return true },
 	)
 	if err != nil {
 		t.Fatalf("RunSetup error: %v", err)
@@ -39,6 +41,12 @@ func TestRunSetup_WritesNamingModeToConfig(t *testing.T) {
 	if loaded.Naming.Mode != config.NamingTimestamp {
 		t.Fatalf("Naming.Mode = %q, want %q", loaded.Naming.Mode, config.NamingTimestamp)
 	}
+	if !loaded.Daemon.Enabled {
+		t.Fatalf("Daemon.Enabled = %v, want true", loaded.Daemon.Enabled)
+	}
+	if !loaded.Daemon.StartAtLogin {
+		t.Fatalf("Daemon.StartAtLogin = %v, want true", loaded.Daemon.StartAtLogin)
+	}
 }
 
 func TestRunSetup_NormalizesInvalidNamingMode(t *testing.T) {
@@ -52,6 +60,8 @@ func TestRunSetup_NormalizesInvalidNamingMode(t *testing.T) {
 		cfgPath,
 		func(string) string { return "~/Pictures/Jobs" },
 		func(string) string { return "banana" },
+		func(bool) bool { return false },
+		func(bool) bool { return true },
 	)
 	if err != nil {
 		t.Fatalf("RunSetup error: %v", err)
@@ -63,6 +73,42 @@ func TestRunSetup_NormalizesInvalidNamingMode(t *testing.T) {
 	}
 	if loaded.Naming.Mode != config.NamingOriginal {
 		t.Fatalf("Naming.Mode = %q, want %q", loaded.Naming.Mode, config.NamingOriginal)
+	}
+	if loaded.Daemon.Enabled {
+		t.Fatalf("Daemon.Enabled = %v, want false", loaded.Daemon.Enabled)
+	}
+	if loaded.Daemon.StartAtLogin {
+		t.Fatalf("Daemon.StartAtLogin = %v, want false", loaded.Daemon.StartAtLogin)
+	}
+}
+
+func TestRunSetup_DaemonDisabled_SkipsStartAtLoginPrompt(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.Defaults()
+	cfgPath := filepath.Join(t.TempDir(), "config.json")
+
+	err := RunSetup(
+		cfg,
+		cfgPath,
+		func(string) string { return "~/Pictures/Jobs" },
+		func(string) string { return config.NamingOriginal },
+		func(bool) bool { return false },
+		func(bool) bool {
+			t.Fatal("start-at-login prompt should not be called when daemon is disabled")
+			return true
+		},
+	)
+	if err != nil {
+		t.Fatalf("RunSetup error: %v", err)
+	}
+
+	loaded, _, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	if loaded.Daemon.StartAtLogin {
+		t.Fatal("Daemon.StartAtLogin should remain false")
 	}
 }
 
@@ -95,6 +141,142 @@ func TestParseNamingChoice(t *testing.T) {
 				t.Errorf("parseNamingChoice(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestParseYesNo(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		in     string
+		want   bool
+		wantOK bool
+	}{
+		{"y", true, true},
+		{"Y", true, true},
+		{"yes", true, true},
+		{"n", false, true},
+		{"no", false, true},
+		{"maybe", false, false},
+		{"", false, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("input_%q", tt.in), func(t *testing.T) {
+			got, ok := parseYesNo(tt.in)
+			if ok != tt.wantOK {
+				t.Errorf("parseYesNo(%q) ok = %v, want %v", tt.in, ok, tt.wantOK)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("parseYesNo(%q) = %v, want %v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPromptDaemonEnabledIO_DefaultFalse(t *testing.T) {
+	t.Parallel()
+	in := strings.NewReader("\n")
+	var out bytes.Buffer
+
+	enabled := promptDaemonEnabledIO(in, &out, false)
+	if enabled {
+		t.Fatal("enabled = true, want false")
+	}
+	if !strings.Contains(out.String(), "Choice [n]:") {
+		t.Fatalf("expected default [n] prompt, got:\n%s", out.String())
+	}
+}
+
+func TestPromptDaemonEnabledIO_DefaultTrue(t *testing.T) {
+	t.Parallel()
+	in := strings.NewReader("\n")
+	var out bytes.Buffer
+
+	enabled := promptDaemonEnabledIO(in, &out, true)
+	if !enabled {
+		t.Fatal("enabled = false, want true")
+	}
+	if !strings.Contains(out.String(), "Choice [y]:") {
+		t.Fatalf("expected default [y] prompt, got:\n%s", out.String())
+	}
+}
+
+func TestPromptDaemonEnabledIO_InvalidThenValid(t *testing.T) {
+	t.Parallel()
+	in := strings.NewReader("wat\ny\n")
+	var out bytes.Buffer
+
+	enabled := promptDaemonEnabledIO(in, &out, false)
+	if !enabled {
+		t.Fatal("enabled = false, want true")
+	}
+	if !strings.Contains(out.String(), "Please enter y or n.") {
+		t.Fatalf("expected invalid-input message, got:\n%s", out.String())
+	}
+}
+
+func TestPromptDaemonEnabledIO_EOF(t *testing.T) {
+	t.Parallel()
+	in := strings.NewReader("")
+	var out bytes.Buffer
+
+	enabled := promptDaemonEnabledIO(in, &out, true)
+	if !enabled {
+		t.Fatal("enabled = false, want true on EOF default")
+	}
+}
+
+func TestPromptDaemonStartAtLoginIO_DefaultFalse(t *testing.T) {
+	t.Parallel()
+	in := strings.NewReader("\n")
+	var out bytes.Buffer
+
+	enabled := promptDaemonStartAtLoginIO(in, &out, false)
+	if enabled {
+		t.Fatal("enabled = true, want false")
+	}
+	if !strings.Contains(out.String(), "Choice [n]:") {
+		t.Fatalf("expected default [n] prompt, got:\n%s", out.String())
+	}
+}
+
+func TestPromptDaemonStartAtLoginIO_DefaultTrue(t *testing.T) {
+	t.Parallel()
+	in := strings.NewReader("\n")
+	var out bytes.Buffer
+
+	enabled := promptDaemonStartAtLoginIO(in, &out, true)
+	if !enabled {
+		t.Fatal("enabled = false, want true")
+	}
+	if !strings.Contains(out.String(), "Choice [y]:") {
+		t.Fatalf("expected default [y] prompt, got:\n%s", out.String())
+	}
+}
+
+func TestPromptDaemonStartAtLoginIO_InvalidThenValid(t *testing.T) {
+	t.Parallel()
+	in := strings.NewReader("wat\ny\n")
+	var out bytes.Buffer
+
+	enabled := promptDaemonStartAtLoginIO(in, &out, false)
+	if !enabled {
+		t.Fatal("enabled = false, want true")
+	}
+	if !strings.Contains(out.String(), "Please enter y or n.") {
+		t.Fatalf("expected invalid-input message, got:\n%s", out.String())
+	}
+}
+
+func TestPromptDaemonStartAtLoginIO_EOF(t *testing.T) {
+	t.Parallel()
+	in := strings.NewReader("")
+	var out bytes.Buffer
+
+	enabled := promptDaemonStartAtLoginIO(in, &out, true)
+	if !enabled {
+		t.Fatal("enabled = false, want true on EOF default")
 	}
 }
 

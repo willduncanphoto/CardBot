@@ -1,0 +1,122 @@
+// Package daemon provides a headless background mode that watches for
+// camera card insertions and invokes a callback (typically launching a
+// terminal window with cardbot). It reuses the detect package for native
+// card detection but has no TUI, spinner, or stdin handling.
+package daemon
+
+import (
+	"fmt"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
+
+	"github.com/illwill/cardbot/internal/detect"
+)
+
+// Detector is the consumer-side interface for card detection.
+// Matches the subset of detect.Detector that the daemon needs.
+type Detector interface {
+	Start() error
+	Stop()
+	Events() <-chan *detect.Card
+	Removals() <-chan string
+	Eject(path string) error
+	Remove(path string)
+}
+
+// Config holds the settings for creating a new Daemon.
+type Config struct {
+	// NewDetector creates a Detector. If nil, uses detect.NewDetector.
+	NewDetector func() Detector
+
+	// OnCardInserted is called when a new card is detected.
+	// Receives the mount path (e.g. "/Volumes/NIKON Z 9").
+	OnCardInserted func(path string)
+}
+
+// Daemon is a long-running background process that watches for card insertions.
+type Daemon struct {
+	newDetector    func() Detector
+	onCardInserted func(path string)
+	tracked        map[string]bool
+	mu             sync.Mutex
+	sigChan        chan os.Signal
+}
+
+// New creates a new Daemon instance.
+func New(c Config) *Daemon {
+	newDetector := c.NewDetector
+	if newDetector == nil {
+		newDetector = func() Detector { return detect.NewDetector() }
+	}
+	onCardInserted := c.OnCardInserted
+	if onCardInserted == nil {
+		onCardInserted = func(path string) {}
+	}
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	return &Daemon{
+		newDetector:    newDetector,
+		onCardInserted: onCardInserted,
+		tracked:        make(map[string]bool),
+		sigChan:        sigChan,
+	}
+}
+
+func ts() string {
+	return time.Now().Format("2006-01-02T15:04:05")
+}
+
+// Run starts the daemon event loop. It blocks until SIGINT/SIGTERM.
+func (d *Daemon) Run() error {
+	detector := d.newDetector()
+	if err := detector.Start(); err != nil {
+		return fmt.Errorf("starting detector: %w", err)
+	}
+	defer detector.Stop()
+
+	fmt.Printf("[%s] CardBot daemon started — watching for cards...\n", ts())
+
+	for {
+		select {
+		case card := <-detector.Events():
+			d.handleCard(card)
+
+		case path := <-detector.Removals():
+			d.handleRemoval(path)
+
+		case <-d.sigChan:
+			fmt.Printf("[%s] Daemon shutting down\n", ts())
+			return nil
+		}
+	}
+}
+
+func (d *Daemon) handleCard(card *detect.Card) {
+	d.mu.Lock()
+	if d.tracked[card.Path] {
+		d.mu.Unlock()
+		return
+	}
+	d.tracked[card.Path] = true
+	d.mu.Unlock()
+
+	fmt.Printf("[%s] Card detected: %s (%s)\n", ts(), card.Name, card.Path)
+	d.onCardInserted(card.Path)
+}
+
+func (d *Daemon) handleRemoval(path string) {
+	d.mu.Lock()
+	if !d.tracked[path] {
+		d.mu.Unlock()
+		return
+	}
+	delete(d.tracked, path)
+	d.mu.Unlock()
+
+	fmt.Printf("[%s] Card removed: %s\n", ts(), path)
+}

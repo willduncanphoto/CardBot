@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -367,4 +368,33 @@ func formatElapsed(d time.Duration) string {
 // newStdinReader creates a buffered reader for stdin.
 func newStdinReader() *bufio.Reader {
 	return bufio.NewReader(os.Stdin)
+}
+
+// launchTargetPath synthesizes a card from the given path and begins analysis
+// immediately, bypassing the normal detector-driven scan-and-wait flow.
+// Used when the user invokes `cardbot /path/to/card`.
+func (a *App) launchTargetPath(path string) {
+	a.stopScanning()
+
+	card := &detect.Card{
+		Path: path,
+		Name: filepath.Base(path),
+	}
+
+	a.mu.Lock()
+	a.currentCard = card
+	a.setPhaseLocked(phaseAnalyzing)
+	a.mu.Unlock()
+
+	scanTS := ts()
+	fmt.Printf("[%s] Scanning started\n", scanTS)
+	fmt.Printf("[%s] \"%s\" (target)\n", scanTS, path)
+	a.logf("Target path: %s", path)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	a.mu.Lock()
+	a.scanCancel = cancel
+	a.mu.Unlock()
+
+	go a.displayCard(ctx, path, scanTS)
 }

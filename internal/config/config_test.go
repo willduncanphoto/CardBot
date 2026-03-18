@@ -19,6 +19,18 @@ func TestDefaults(t *testing.T) {
 	if cfg.Naming.Mode != NamingOriginal {
 		t.Errorf("Naming.Mode = %q, want %q", cfg.Naming.Mode, NamingOriginal)
 	}
+	if cfg.Daemon.Enabled {
+		t.Error("Daemon.Enabled should default to false")
+	}
+	if cfg.Daemon.StartAtLogin {
+		t.Error("Daemon.StartAtLogin should default to false")
+	}
+	if cfg.Daemon.TerminalApp != "Terminal" {
+		t.Errorf("Daemon.TerminalApp = %q, want %q", cfg.Daemon.TerminalApp, "Terminal")
+	}
+	if cfg.Daemon.LaunchArgs != nil {
+		t.Errorf("Daemon.LaunchArgs = %v, want nil", cfg.Daemon.LaunchArgs)
+	}
 	if cfg.Advanced.BufferSizeKB != 256 {
 		t.Errorf("BufferSizeKB = %d, want 256", cfg.Advanced.BufferSizeKB)
 	}
@@ -36,6 +48,10 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	cfg := Defaults()
 	cfg.Destination.Path = "~/Photos/Test"
 	cfg.Naming.Mode = NamingTimestamp
+	cfg.Daemon.Enabled = true
+	cfg.Daemon.StartAtLogin = true
+	cfg.Daemon.TerminalApp = "Ghostty"
+	cfg.Daemon.LaunchArgs = []string{"-e", "cardbot {{mount_path}}"}
 
 	if err := Save(cfg, path); err != nil {
 		t.Fatal(err)
@@ -53,6 +69,18 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	}
 	if loaded.Naming.Mode != NamingTimestamp {
 		t.Errorf("Naming.Mode = %q, want %q", loaded.Naming.Mode, NamingTimestamp)
+	}
+	if !loaded.Daemon.Enabled {
+		t.Error("Daemon.Enabled = false, want true")
+	}
+	if !loaded.Daemon.StartAtLogin {
+		t.Error("Daemon.StartAtLogin = false, want true")
+	}
+	if loaded.Daemon.TerminalApp != "Ghostty" {
+		t.Errorf("Daemon.TerminalApp = %q, want %q", loaded.Daemon.TerminalApp, "Ghostty")
+	}
+	if len(loaded.Daemon.LaunchArgs) != 2 {
+		t.Errorf("Daemon.LaunchArgs len = %d, want 2", len(loaded.Daemon.LaunchArgs))
 	}
 	if loaded.Schema != schemaVersion {
 		t.Errorf("Schema = %q, want %q", loaded.Schema, schemaVersion)
@@ -216,6 +244,18 @@ func TestLoad_PartialConfig(t *testing.T) {
 	if cfg.Naming.Mode != defaults.Naming.Mode {
 		t.Errorf("Naming.Mode = %q, want %q (default)", cfg.Naming.Mode, defaults.Naming.Mode)
 	}
+	if cfg.Daemon.Enabled != defaults.Daemon.Enabled {
+		t.Errorf("Daemon.Enabled = %v, want %v (default)", cfg.Daemon.Enabled, defaults.Daemon.Enabled)
+	}
+	if cfg.Daemon.StartAtLogin != defaults.Daemon.StartAtLogin {
+		t.Errorf("Daemon.StartAtLogin = %v, want %v (default)", cfg.Daemon.StartAtLogin, defaults.Daemon.StartAtLogin)
+	}
+	if cfg.Daemon.TerminalApp != defaults.Daemon.TerminalApp {
+		t.Errorf("Daemon.TerminalApp = %q, want %q (default)", cfg.Daemon.TerminalApp, defaults.Daemon.TerminalApp)
+	}
+	if len(cfg.Daemon.LaunchArgs) != len(defaults.Daemon.LaunchArgs) {
+		t.Errorf("Daemon.LaunchArgs len = %d, want %d (default)", len(cfg.Daemon.LaunchArgs), len(defaults.Daemon.LaunchArgs))
+	}
 }
 
 func TestLoad_InvalidNamingMode(t *testing.T) {
@@ -234,6 +274,44 @@ func TestLoad_InvalidNamingMode(t *testing.T) {
 	}
 	if len(warnings) == 0 {
 		t.Fatal("expected warning for invalid naming mode")
+	}
+}
+
+func TestLoad_DaemonStartAtLoginRequiresEnabled(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(path, []byte(`{"$schema":"cardbot-config-v1","daemon":{"enabled":false,"start_at_login":true}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, warnings, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Daemon.StartAtLogin {
+		t.Fatal("Daemon.StartAtLogin should be forced false when daemon.enabled is false")
+	}
+	if len(warnings) == 0 {
+		t.Fatal("expected warning for invalid daemon settings")
+	}
+}
+
+func TestLoad_DaemonTerminalAppDefaultedWhenEmpty(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(path, []byte(`{"$schema":"cardbot-config-v1","daemon":{"terminal_app":""}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, warnings, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Daemon.TerminalApp != "Terminal" {
+		t.Fatalf("Daemon.TerminalApp = %q, want %q", cfg.Daemon.TerminalApp, "Terminal")
+	}
+	if len(warnings) == 0 {
+		t.Fatal("expected warning for empty terminal_app")
 	}
 }
 

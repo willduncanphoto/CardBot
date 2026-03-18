@@ -20,6 +20,7 @@ type Config struct {
 	Schema      string      `json:"$schema"`
 	Destination Destination `json:"destination"`
 	Naming      Naming      `json:"naming"`
+	Daemon      Daemon      `json:"daemon"`
 	Output      Output      `json:"output"`
 	Advanced    Advanced    `json:"advanced"`
 }
@@ -32,6 +33,14 @@ type Destination struct {
 // Naming settings.
 type Naming struct {
 	Mode string `json:"mode"`
+}
+
+// Daemon settings.
+type Daemon struct {
+	Enabled      bool     `json:"enabled"`
+	StartAtLogin bool     `json:"start_at_login"`
+	TerminalApp  string   `json:"terminal_app"`
+	LaunchArgs   []string `json:"launch_args"`
 }
 
 // Output settings.
@@ -55,6 +64,12 @@ func Defaults() *Config {
 		},
 		Naming: Naming{
 			Mode: NamingOriginal,
+		},
+		Daemon: Daemon{
+			Enabled:      false,
+			StartAtLogin: false,
+			TerminalApp:  "Terminal",
+			LaunchArgs:   nil,
 		},
 		Output: Output{
 			Color: true,
@@ -133,6 +148,15 @@ func Load(path string) (*Config, []string, error) {
 		warnings = append(warnings, fmt.Sprintf("naming.mode %q is invalid, using %q", cfg.Naming.Mode, NamingOriginal))
 	}
 	cfg.Naming.Mode = normalizedNaming
+
+	if !cfg.Daemon.Enabled && cfg.Daemon.StartAtLogin {
+		warnings = append(warnings, "daemon.start_at_login requires daemon.enabled=true, disabling start_at_login")
+		cfg.Daemon.StartAtLogin = false
+	}
+	if strings.TrimSpace(cfg.Daemon.TerminalApp) == "" {
+		warnings = append(warnings, "daemon.terminal_app is empty, using Terminal")
+		cfg.Daemon.TerminalApp = "Terminal"
+	}
 
 	return cfg, warnings, nil
 }

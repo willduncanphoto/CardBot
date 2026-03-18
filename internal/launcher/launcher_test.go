@@ -1,0 +1,136 @@
+package launcher
+
+import (
+	"strings"
+	"testing"
+)
+
+type recordedCommand struct {
+	name string
+	args []string
+}
+
+func TestLaunchWith_TerminalDefault_UsesAppleScript(t *testing.T) {
+	var got recordedCommand
+	run := func(name string, args ...string) error {
+		got = recordedCommand{name: name, args: append([]string{}, args...)}
+		return nil
+	}
+
+	err := launchWith(Options{
+		CardBotBinary: "/usr/local/bin/cardbot",
+		MountPath:     "/Volumes/NIKON Z 9",
+	}, run)
+	if err != nil {
+		t.Fatalf("launchWith error: %v", err)
+	}
+	if got.name != "osascript" {
+		t.Fatalf("command name = %q, want %q", got.name, "osascript")
+	}
+	joined := strings.Join(got.args, " ")
+	if !strings.Contains(joined, "tell application \"Terminal\" to do script") {
+		t.Fatalf("args missing Terminal script command: %v", got.args)
+	}
+	if !strings.Contains(joined, "/usr/local/bin/cardbot") {
+		t.Fatalf("args missing cardbot binary path: %v", got.args)
+	}
+	if !strings.Contains(joined, "/Volumes/NIKON Z 9") {
+		t.Fatalf("args missing mount path: %v", got.args)
+	}
+}
+
+func TestLaunchWith_GhosttyDefault_UsesOpenWithE(t *testing.T) {
+	var got recordedCommand
+	run := func(name string, args ...string) error {
+		got = recordedCommand{name: name, args: append([]string{}, args...)}
+		return nil
+	}
+
+	err := launchWith(Options{
+		TerminalApp:   "Ghostty",
+		CardBotBinary: "/usr/local/bin/cardbot",
+		MountPath:     "/Volumes/CARD",
+	}, run)
+	if err != nil {
+		t.Fatalf("launchWith error: %v", err)
+	}
+	if got.name != "open" {
+		t.Fatalf("command name = %q, want %q", got.name, "open")
+	}
+	if len(got.args) < 5 {
+		t.Fatalf("args too short: %v", got.args)
+	}
+	if got.args[0] != "-a" || got.args[1] != "Ghostty" {
+		t.Fatalf("args = %v, want '-a Ghostty ...'", got.args)
+	}
+	if got.args[2] != "--args" || got.args[3] != "-e" {
+		t.Fatalf("args = %v, want '--args -e ...'", got.args)
+	}
+}
+
+func TestLaunchWith_CustomLaunchArgs_TemplatesResolved(t *testing.T) {
+	var got recordedCommand
+	run := func(name string, args ...string) error {
+		got = recordedCommand{name: name, args: append([]string{}, args...)}
+		return nil
+	}
+
+	err := launchWith(Options{
+		TerminalApp:   "Ghostty",
+		CardBotBinary: "/opt/cardbot",
+		MountPath:     "/Volumes/NIKON Z 9",
+		LaunchArgs: []string{
+			"-e",
+			"{{cardbot_binary}} {{mount_path}}",
+		},
+	}, run)
+	if err != nil {
+		t.Fatalf("launchWith error: %v", err)
+	}
+	if got.name != "open" {
+		t.Fatalf("command name = %q, want %q", got.name, "open")
+	}
+	joined := strings.Join(got.args, "|")
+	if !strings.Contains(joined, "/opt/cardbot /Volumes/NIKON Z 9") {
+		t.Fatalf("template values not resolved: %v", got.args)
+	}
+}
+
+func TestLaunchWith_EmptyTerminalApp_DefaultsToTerminal(t *testing.T) {
+	var got recordedCommand
+	run := func(name string, args ...string) error {
+		got = recordedCommand{name: name, args: append([]string{}, args...)}
+		return nil
+	}
+
+	err := launchWith(Options{
+		TerminalApp:   "   ",
+		CardBotBinary: "/usr/local/bin/cardbot",
+		MountPath:     "/Volumes/CARD",
+	}, run)
+	if err != nil {
+		t.Fatalf("launchWith error: %v", err)
+	}
+	if got.name != "osascript" {
+		t.Fatalf("command name = %q, want %q", got.name, "osascript")
+	}
+}
+
+func TestLaunchWith_RequiresBinaryAndMountPath(t *testing.T) {
+	tests := []struct {
+		name string
+		opts Options
+	}{
+		{name: "missing binary", opts: Options{MountPath: "/Volumes/CARD"}},
+		{name: "missing mount path", opts: Options{CardBotBinary: "/usr/local/bin/cardbot"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := launchWith(tt.opts, func(name string, args ...string) error { return nil })
+			if err == nil {
+				t.Fatal("expected error")
+			}
+		})
+	}
+}
