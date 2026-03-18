@@ -127,7 +127,7 @@ To change these later, run `cardbot --setup` again (it reworks all setup choices
 **Output example:**
 
 ```
-[2026-03-17T10:30:44] CardBot 0.4.7
+[2026-03-17T10:30:44] CardBot 0.5.0
 [2026-03-17T10:30:44] CardBot is up to date
 [2026-03-17T10:30:51] Scanning started
 [2026-03-17T10:30:51] "/Volumes/NIKON Z 9" (disk4s1) detected
@@ -319,9 +319,9 @@ Run `cardbot --setup` to re-run setup and change saved preferences. Run `cardbot
 
 | Version | Focus | Status |
 |---------|-------|--------|
-| **0.4.x** | Housekeeping & stability | Current |
-| **0.5.0** | Copy operations improvements | Planned |
-| **0.6.0** | Copyright metadata injection | Planned |
+| **0.5.0** | Background auto-launch (daemon + LaunchAgent + status) | Current |
+| **0.6.0** | Copy operations improvements | Planned |
+| **0.8.0** | Copyright metadata injection | Planned |
 
 ### Maybe Someday
 - Windows support
