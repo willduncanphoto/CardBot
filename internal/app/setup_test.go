@@ -412,6 +412,27 @@ func TestPromptNamingModeIO_EOF(t *testing.T) {
 	}
 }
 
+func TestSetupPrompter_SequentialPromptsShareInputStream(t *testing.T) {
+	t.Parallel()
+
+	in := strings.NewReader("2\ny\ny\n2\n")
+	var out bytes.Buffer
+	p := NewSetupPrompter(in, &out)
+
+	if mode := p.PromptNamingMode(config.NamingOriginal); mode != config.NamingTimestamp {
+		t.Fatalf("PromptNamingMode = %q, want %q", mode, config.NamingTimestamp)
+	}
+	if enabled := p.PromptDaemonEnabled(false); !enabled {
+		t.Fatal("PromptDaemonEnabled = false, want true")
+	}
+	if startAtLogin := p.PromptDaemonStartAtLogin(false); !startAtLogin {
+		t.Fatal("PromptDaemonStartAtLogin = false, want true")
+	}
+	if appName := p.PromptDaemonTerminalApp("Terminal"); appName != "Ghostty" {
+		t.Fatalf("PromptDaemonTerminalApp = %q, want %q", appName, "Ghostty")
+	}
+}
+
 func TestNamingDisplayLine(t *testing.T) {
 	t.Parallel()
 

@@ -102,7 +102,12 @@ func main() {
 		}
 	}
 	if needsSetup {
-		if saveErr := app.RunSetup(cfg, cfgPath, promptDestination, app.PromptNamingMode, app.PromptDaemonEnabled, app.PromptDaemonStartAtLogin, app.PromptDaemonTerminalApp); saveErr != nil {
+		setupReader := bufio.NewReader(os.Stdin)
+		setupPrompter := app.NewSetupPrompter(setupReader, os.Stdout)
+		promptDestinationFn := func(defaultPath string) string {
+			return promptDestinationWithIO(defaultPath, setupReader, os.Stdout)
+		}
+		if saveErr := app.RunSetup(cfg, cfgPath, promptDestinationFn, setupPrompter.PromptNamingMode, setupPrompter.PromptDaemonEnabled, setupPrompter.PromptDaemonStartAtLogin, setupPrompter.PromptDaemonTerminalApp); saveErr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not save config: %s\n", app.FriendlyErr(saveErr))
 		}
 		syncDaemonAutoStartFromConfig(cfg)
@@ -203,10 +208,21 @@ func main() {
 // promptDestination asks the user to pick a destination path.
 // On macOS, opens the native folder picker. Falls back to readline on Linux.
 func promptDestination(defaultPath string) string {
-	fmt.Println("Welcome to CardBot!")
-	fmt.Println()
-	fmt.Println("Where should CardBot copy your work?")
-	fmt.Println()
+	return promptDestinationWithIO(defaultPath, bufio.NewReader(os.Stdin), os.Stdout)
+}
+
+func promptDestinationWithIO(defaultPath string, in *bufio.Reader, out io.Writer) string {
+	if in == nil {
+		in = bufio.NewReader(os.Stdin)
+	}
+	if out == nil {
+		out = os.Stdout
+	}
+
+	fmt.Fprintln(out, "Welcome to CardBot!")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Where should CardBot copy your work?")
+	fmt.Fprintln(out)
 
 	expanded, err := config.ExpandPath(defaultPath)
 	if err != nil {
@@ -215,19 +231,29 @@ func promptDestination(defaultPath string) string {
 
 	picked, err := pick.Folder(expanded)
 	if err == nil && picked != "" {
-		fmt.Printf("Destination: %s\n", picked)
+		fmt.Fprintf(out, "Destination: %s\n", picked)
 		return picked
 	}
 
-	// Fallback: readline with tab completion.
-	return promptDestinationReadline(expanded)
+	// Fallback: readline with shared buffered input.
+	return promptDestinationReadlineIO(expanded, in, out)
 }
 
 // promptDestinationReadline is the fallback path prompt using stdlib.
 func promptDestinationReadline(defaultPath string) string {
-	fmt.Printf("Destination [%s]: ", defaultPath)
-	reader := bufio.NewReader(os.Stdin)
-	line, _ := reader.ReadString('\n')
+	return promptDestinationReadlineIO(defaultPath, bufio.NewReader(os.Stdin), os.Stdout)
+}
+
+func promptDestinationReadlineIO(defaultPath string, in *bufio.Reader, out io.Writer) string {
+	if in == nil {
+		in = bufio.NewReader(os.Stdin)
+	}
+	if out == nil {
+		out = os.Stdout
+	}
+
+	fmt.Fprintf(out, "Destination [%s]: ", defaultPath)
+	line, _ := in.ReadString('\n')
 	line = strings.TrimSpace(line)
 	if line == "" {
 		return defaultPath

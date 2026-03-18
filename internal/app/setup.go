@@ -10,6 +10,40 @@ import (
 	"github.com/illwill/cardbot/internal/config"
 )
 
+// SetupPrompter reads setup answers from a shared buffered input stream.
+// Reusing one reader prevents buffered read-ahead from consuming subsequent answers.
+type SetupPrompter struct {
+	reader *bufio.Reader
+	out    io.Writer
+}
+
+// NewSetupPrompter creates a setup prompter with shared input/output.
+func NewSetupPrompter(in io.Reader, out io.Writer) *SetupPrompter {
+	if in == nil {
+		in = os.Stdin
+	}
+	if out == nil {
+		out = os.Stdout
+	}
+	return &SetupPrompter{reader: bufio.NewReader(in), out: out}
+}
+
+func (p *SetupPrompter) PromptNamingMode(defaultMode string) string {
+	return promptNamingModeReader(p.reader, p.out, defaultMode)
+}
+
+func (p *SetupPrompter) PromptDaemonEnabled(defaultEnabled bool) bool {
+	return promptDaemonEnabledReader(p.reader, p.out, defaultEnabled)
+}
+
+func (p *SetupPrompter) PromptDaemonStartAtLogin(defaultEnabled bool) bool {
+	return promptDaemonStartAtLoginReader(p.reader, p.out, defaultEnabled)
+}
+
+func (p *SetupPrompter) PromptDaemonTerminalApp(defaultApp string) string {
+	return promptDaemonTerminalAppReader(p.reader, p.out, defaultApp)
+}
+
 // RunSetup executes first-time/--setup prompts and persists config.
 func RunSetup(
 	cfg *config.Config,
@@ -57,8 +91,11 @@ func PromptDaemonTerminalApp(defaultApp string) string {
 }
 
 func promptNamingModeIO(in io.Reader, out io.Writer, defaultMode string) string {
+	return promptNamingModeReader(bufio.NewReader(in), out, defaultMode)
+}
+
+func promptNamingModeReader(reader *bufio.Reader, out io.Writer, defaultMode string) string {
 	mode := config.NormalizeNamingMode(defaultMode)
-	reader := bufio.NewReader(in)
 
 	for {
 		fmt.Fprintln(out, "────────────────────────────────────────")
@@ -102,7 +139,10 @@ func promptNamingModeIO(in io.Reader, out io.Writer, defaultMode string) string 
 }
 
 func promptDaemonEnabledIO(in io.Reader, out io.Writer, defaultEnabled bool) bool {
-	reader := bufio.NewReader(in)
+	return promptDaemonEnabledReader(bufio.NewReader(in), out, defaultEnabled)
+}
+
+func promptDaemonEnabledReader(reader *bufio.Reader, out io.Writer, defaultEnabled bool) bool {
 	defaultChoice := "n"
 	if defaultEnabled {
 		defaultChoice = "y"
@@ -137,7 +177,10 @@ func promptDaemonEnabledIO(in io.Reader, out io.Writer, defaultEnabled bool) boo
 }
 
 func promptDaemonStartAtLoginIO(in io.Reader, out io.Writer, defaultEnabled bool) bool {
-	reader := bufio.NewReader(in)
+	return promptDaemonStartAtLoginReader(bufio.NewReader(in), out, defaultEnabled)
+}
+
+func promptDaemonStartAtLoginReader(reader *bufio.Reader, out io.Writer, defaultEnabled bool) bool {
 	defaultChoice := "n"
 	if defaultEnabled {
 		defaultChoice = "y"
@@ -172,7 +215,10 @@ func promptDaemonStartAtLoginIO(in io.Reader, out io.Writer, defaultEnabled bool
 }
 
 func promptDaemonTerminalAppIO(in io.Reader, out io.Writer, defaultApp string) string {
-	reader := bufio.NewReader(in)
+	return promptDaemonTerminalAppReader(bufio.NewReader(in), out, defaultApp)
+}
+
+func promptDaemonTerminalAppReader(reader *bufio.Reader, out io.Writer, defaultApp string) string {
 	app := normalizeDaemonTerminalApp(defaultApp)
 
 	for {
