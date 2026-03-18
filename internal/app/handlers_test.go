@@ -367,7 +367,6 @@ func TestFinishCard_EmptyQueue_ClearsCardAndScans(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestHandleInput_Empty_IsNoOp(t *testing.T) {
-	t.Parallel()
 	a := &App{copiedModes: make(map[string]bool)}
 	out := captureStdout(t, func() { a.handleInput("") })
 	if out != "" {
@@ -376,7 +375,6 @@ func TestHandleInput_Empty_IsNoOp(t *testing.T) {
 }
 
 func TestHandleInput_NoCard_NonblankInput(t *testing.T) {
-	t.Parallel()
 	a := &App{copiedModes: make(map[string]bool)}
 	out := captureStdout(t, func() { a.handleInput("a") })
 	if !strings.Contains(out, "No card inserted") {
@@ -385,7 +383,6 @@ func TestHandleInput_NoCard_NonblankInput(t *testing.T) {
 }
 
 func TestHandleInput_Help_ShowsCommands(t *testing.T) {
-	t.Parallel()
 	a := &App{copiedModes: make(map[string]bool)}
 	out := captureStdout(t, func() { a.handleInput("?") })
 	if !strings.Contains(out, "[a]  Copy All") {
