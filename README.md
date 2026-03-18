@@ -209,6 +209,10 @@ Daemon reliability notes:
 - Single-instance guard: if another `cardbot` process is already running, auto-launch is skipped.
 - Duplicate cooldown: rapid duplicate mount events (common around sleep/wake) are suppressed briefly.
 
+Daemon troubleshooting:
+- If launch fails with Apple Events/automation errors, grant Automation permission in macOS Privacy & Security.
+- If launch fails with permission denied/operation not permitted, grant Full Disk Access.
+
 ### Update Command
 
 ```bash
@@ -305,6 +309,11 @@ Config is stored at `~/.config/cardbot/config.json`:
 ```
 
 Run `cardbot --setup` to re-run setup and change saved preferences. Run `cardbot --reset` to clear all saved config.
+
+## Release Prep (0.5.0)
+
+- QA checklist: `docs/050_QA_CHECKLIST.md`
+- Release notes draft: `docs/050_RELEASE_NOTES_DRAFT.md`
 
 ## Roadmap
 
