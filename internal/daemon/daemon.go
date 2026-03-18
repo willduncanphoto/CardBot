@@ -34,15 +34,25 @@ type Config struct {
 	// OnCardInserted is called when a new card is detected.
 	// Receives the mount path (e.g. "/Volumes/NIKON Z 9").
 	OnCardInserted func(path string)
+
+	// DuplicateCooldown suppresses rapid repeat launch attempts for the same path
+	// after a removal/re-appearance cycle (e.g. during sleep/wake churn).
+	DuplicateCooldown time.Duration
+
+	// Now is an optional time provider for tests.
+	Now func() time.Time
 }
 
 // Daemon is a long-running background process that watches for card insertions.
 type Daemon struct {
-	newDetector    func() Detector
-	onCardInserted func(path string)
-	tracked        map[string]bool
-	mu             sync.Mutex
-	sigChan        chan os.Signal
+	newDetector       func() Detector
+	onCardInserted    func(path string)
+	tracked           map[string]bool
+	recentlyProcessed map[string]time.Time
+	duplicateCooldown time.Duration
+	now               func() time.Time
+	mu                sync.Mutex
+	sigChan           chan os.Signal
 }
 
 // New creates a new Daemon instance.
@@ -55,15 +65,26 @@ func New(c Config) *Daemon {
 	if onCardInserted == nil {
 		onCardInserted = func(path string) {}
 	}
+	cooldown := c.DuplicateCooldown
+	if cooldown <= 0 {
+		cooldown = 5 * time.Second
+	}
+	now := c.Now
+	if now == nil {
+		now = time.Now
+	}
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	return &Daemon{
-		newDetector:    newDetector,
-		onCardInserted: onCardInserted,
-		tracked:        make(map[string]bool),
-		sigChan:        sigChan,
+		newDetector:       newDetector,
+		onCardInserted:    onCardInserted,
+		tracked:           make(map[string]bool),
+		recentlyProcessed: make(map[string]time.Time),
+		duplicateCooldown: cooldown,
+		now:               now,
+		sigChan:           sigChan,
 	}
 }
 
@@ -97,12 +118,30 @@ func (d *Daemon) Run() error {
 }
 
 func (d *Daemon) handleCard(card *detect.Card) {
+	if card == nil || card.Path == "" {
+		return
+	}
+
 	d.mu.Lock()
 	if d.tracked[card.Path] {
 		d.mu.Unlock()
 		return
 	}
+
+	now := d.now()
+	for path, last := range d.recentlyProcessed {
+		if now.Sub(last) >= d.duplicateCooldown {
+			delete(d.recentlyProcessed, path)
+		}
+	}
+	if last, ok := d.recentlyProcessed[card.Path]; ok && now.Sub(last) < d.duplicateCooldown {
+		d.mu.Unlock()
+		fmt.Printf("[%s] Suppressing duplicate card event for %s (cooldown)\n", ts(), card.Path)
+		return
+	}
+
 	d.tracked[card.Path] = true
+	d.recentlyProcessed[card.Path] = now
 	d.mu.Unlock()
 
 	fmt.Printf("[%s] Card detected: %s (%s)\n", ts(), card.Name, card.Path)
@@ -110,6 +149,10 @@ func (d *Daemon) handleCard(card *detect.Card) {
 }
 
 func (d *Daemon) handleRemoval(path string) {
+	if path == "" {
+		return
+	}
+
 	d.mu.Lock()
 	if !d.tracked[path] {
 		d.mu.Unlock()

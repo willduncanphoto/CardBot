@@ -34,10 +34,10 @@ func (f *fakeDetector) Start() error {
 	return f.startErr
 }
 func (f *fakeDetector) Stop()                       { f.stopped.Store(true) }
-func (f *fakeDetector) Events() <-chan *detect.Card  { return f.events }
-func (f *fakeDetector) Removals() <-chan string      { return f.removals }
-func (f *fakeDetector) Eject(path string) error      { return nil }
-func (f *fakeDetector) Remove(path string)           {}
+func (f *fakeDetector) Events() <-chan *detect.Card { return f.events }
+func (f *fakeDetector) Removals() <-chan string     { return f.removals }
+func (f *fakeDetector) Eject(path string) error     { return nil }
+func (f *fakeDetector) Remove(path string)          {}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -48,7 +48,7 @@ func TestDaemon_StartsDetectorAndWaitsForSignal(t *testing.T) {
 
 	fd := newFakeDetector()
 	d := New(Config{
-		NewDetector: func() Detector { return fd },
+		NewDetector:    func() Detector { return fd },
 		OnCardInserted: func(path string) {},
 	})
 
@@ -189,7 +189,8 @@ func TestDaemon_CardRemoval_AllowsReinsertCallback(t *testing.T) {
 	callCount := 0
 
 	d := New(Config{
-		NewDetector: func() Detector { return fd },
+		NewDetector:       func() Detector { return fd },
+		DuplicateCooldown: 50 * time.Millisecond,
 		OnCardInserted: func(path string) {
 			mu.Lock()
 			callCount++
@@ -235,7 +236,7 @@ func TestDaemon_DetectorStartError_ReturnsError(t *testing.T) {
 	fd.startErr = os.ErrPermission
 
 	d := New(Config{
-		NewDetector: func() Detector { return fd },
+		NewDetector:    func() Detector { return fd },
 		OnCardInserted: func(path string) {},
 	})
 
@@ -283,4 +284,32 @@ func TestDaemon_MultipleCards_EachGetsCallback(t *testing.T) {
 
 	d.sigChan <- os.Interrupt
 	<-done
+}
+
+func TestDaemon_Cooldown_SuppressesRapidReinsert(t *testing.T) {
+	now := time.Date(2026, 3, 18, 12, 0, 0, 0, time.UTC)
+	calls := 0
+	d := New(Config{
+		DuplicateCooldown: 5 * time.Second,
+		Now:               func() time.Time { return now },
+		OnCardInserted: func(path string) {
+			calls++
+		},
+	})
+
+	card := &detect.Card{Path: "/Volumes/CARD", Name: "CARD"}
+	d.handleCard(card)
+	d.handleRemoval(card.Path)
+
+	now = now.Add(2 * time.Second)
+	d.handleCard(card)
+	if calls != 1 {
+		t.Fatalf("calls = %d, want 1 (suppressed by cooldown)", calls)
+	}
+
+	now = now.Add(4 * time.Second)
+	d.handleCard(card)
+	if calls != 2 {
+		t.Fatalf("calls = %d, want 2 (cooldown elapsed)", calls)
+	}
 }

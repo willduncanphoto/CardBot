@@ -120,7 +120,7 @@ cardbot
 
 Then insert a memory card.
 
-**First run** — CardBot will open a folder picker (macOS), ask for naming mode, ask whether to auto-launch on card insert, and ask whether daemon mode should start automatically at login. Choices are saved to `~/.config/cardbot/config.json`.
+**First run** — CardBot will open a folder picker (macOS), ask for naming mode, ask whether to auto-launch on card insert, ask whether daemon mode should start automatically at login, and ask which terminal app daemon mode should open. Choices are saved to `~/.config/cardbot/config.json`.
 
 To change these later, run `cardbot --setup` again (it reworks all setup choices each time).
 
@@ -172,7 +172,7 @@ Press `?` to see all available commands.
 | `--dest <path>` | Override destination path for this session |
 | `--dry-run` | Scan cards but do not copy files |
 | `--daemon` | Run headless daemon mode (watch for cards in background) |
-| `--setup` | Re-run setup prompts (destination, naming, daemon, start-at-login) |
+| `--setup` | Re-run setup prompts (destination, naming, daemon, start-at-login, terminal app) |
 | `--reset` | Clear saved config |
 | `--version` | Print version and exit |
 
@@ -198,10 +198,16 @@ cardbot daemon-status
 cardbot daemon-status --json
 ```
 
+JSON mode includes `version`, `pid`, `daemon`, `single_instance_guard`, and `launch_agent` fields.
+
 This mode watches for card insertions without showing the interactive prompt.
 It launches your preferred terminal app from config (`daemon.terminal_app`).
 Advanced command templates can be set with `daemon.launch_args`
 using `{{cardbot_binary}}` and `{{mount_path}}` placeholders.
+
+Daemon reliability notes:
+- Single-instance guard: if another `cardbot` process is already running, auto-launch is skipped.
+- Duplicate cooldown: rapid duplicate mount events (common around sleep/wake) are suppressed briefly.
 
 ### Update Command
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -101,7 +102,7 @@ func main() {
 		}
 	}
 	if needsSetup {
-		if saveErr := app.RunSetup(cfg, cfgPath, promptDestination, app.PromptNamingMode, app.PromptDaemonEnabled, app.PromptDaemonStartAtLogin); saveErr != nil {
+		if saveErr := app.RunSetup(cfg, cfgPath, promptDestination, app.PromptNamingMode, app.PromptDaemonEnabled, app.PromptDaemonStartAtLogin, app.PromptDaemonTerminalApp); saveErr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not save config: %s\n", app.FriendlyErr(saveErr))
 		}
 		syncDaemonAutoStartFromConfig(cfg)
@@ -283,6 +284,10 @@ func runDaemon(cfg *config.Config, logger *cblog.Logger) {
 			})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "[%s] Launch failed: %v\n", time.Now().Format("2006-01-02T15:04:05"), err)
+				if hint := daemonLaunchHint(err); hint != "" {
+					fmt.Fprintf(os.Stderr, "[%s] Hint: %s\n", time.Now().Format("2006-01-02T15:04:05"), hint)
+					logf("Launch hint for %s: %s", path, hint)
+				}
 				logf("Launch failed for %s: %v", path, err)
 				return
 			}
@@ -295,6 +300,21 @@ func runDaemon(cfg *config.Config, logger *cblog.Logger) {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func daemonLaunchHint(err error) string {
+	if err == nil {
+		return ""
+	}
+	s := strings.ToLower(err.Error())
+
+	if strings.Contains(s, "not authorized to send apple events") || strings.Contains(s, "not authorised to send apple events") || strings.Contains(s, "automation") {
+		return "Grant Automation permission in macOS System Settings → Privacy & Security → Automation for your terminal app."
+	}
+	if strings.Contains(s, "operation not permitted") || strings.Contains(s, "permission denied") {
+		return "Grant Full Disk Access to CardBot and your terminal app in macOS System Settings → Privacy & Security → Full Disk Access."
+	}
+	return ""
 }
 
 func runInstallDaemonCommand() int {
@@ -343,12 +363,15 @@ type daemonStatusOptions struct {
 }
 
 type daemonStatusReport struct {
-	ConfigPath      string                   `json:"config_path,omitempty"`
-	ConfigPathError string                   `json:"config_path_error,omitempty"`
-	ConfigLoadError string                   `json:"config_load_error,omitempty"`
-	ConfigWarnings  []string                 `json:"config_warnings,omitempty"`
-	Daemon          daemonStatusDaemonReport `json:"daemon"`
-	LaunchAgent     daemonStatusLAReport     `json:"launch_agent"`
+	Version             string                    `json:"version"`
+	PID                 int                       `json:"pid"`
+	ConfigPath          string                    `json:"config_path,omitempty"`
+	ConfigPathError     string                    `json:"config_path_error,omitempty"`
+	ConfigLoadError     string                    `json:"config_load_error,omitempty"`
+	ConfigWarnings      []string                  `json:"config_warnings,omitempty"`
+	Daemon              daemonStatusDaemonReport  `json:"daemon"`
+	SingleInstanceGuard daemonStatusSIGuardReport `json:"single_instance_guard"`
+	LaunchAgent         daemonStatusLAReport      `json:"launch_agent"`
 }
 
 type daemonStatusDaemonReport struct {
@@ -356,6 +379,13 @@ type daemonStatusDaemonReport struct {
 	StartAtLogin bool     `json:"start_at_login"`
 	TerminalApp  string   `json:"terminal_app"`
 	LaunchArgs   []string `json:"launch_args"`
+}
+
+type daemonStatusSIGuardReport struct {
+	Enabled         bool   `json:"enabled"`
+	ProcessName     string `json:"process_name"`
+	HasOtherProcess bool   `json:"has_other_process"`
+	CheckError      string `json:"check_error,omitempty"`
 }
 
 type daemonStatusLAReport struct {
@@ -390,6 +420,7 @@ func runDaemonStatusCommand(args []string) int {
 
 func parseDaemonStatusOptions(args []string) (daemonStatusOptions, error) {
 	fs := flag.NewFlagSet("daemon-status", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
 	jsonOut := fs.Bool("json", false, "output daemon status as JSON")
 	if err := fs.Parse(args); err != nil {
 		return daemonStatusOptions{}, err
@@ -401,7 +432,17 @@ func parseDaemonStatusOptions(args []string) (daemonStatusOptions, error) {
 }
 
 func collectDaemonStatusReport() daemonStatusReport {
-	report := daemonStatusReport{LaunchAgent: daemonStatusLAReport{Supported: runtime.GOOS == "darwin"}}
+	processName := "cardbot"
+	if exe, err := os.Executable(); err == nil {
+		processName = filepath.Base(exe)
+	}
+	pid := os.Getpid()
+	report := daemonStatusReport{
+		Version:             version,
+		PID:                 pid,
+		SingleInstanceGuard: collectSingleInstanceGuardStatus(processName, pid, instance.HasOtherProcess),
+		LaunchAgent:         daemonStatusLAReport{Supported: runtime.GOOS == "darwin"},
+	}
 
 	cfg := config.Defaults()
 	cfgPath, cfgPathErr := config.Path()
@@ -444,9 +485,29 @@ func collectDaemonStatusReport() daemonStatusReport {
 	return report
 }
 
+func collectSingleInstanceGuardStatus(processName string, selfPID int, checker func(processName string, selfPID int) (bool, error)) daemonStatusSIGuardReport {
+	report := daemonStatusSIGuardReport{
+		Enabled:     true,
+		ProcessName: processName,
+	}
+	if checker == nil {
+		report.CheckError = "no checker configured"
+		return report
+	}
+	hasOther, err := checker(processName, selfPID)
+	if err != nil {
+		report.CheckError = err.Error()
+		return report
+	}
+	report.HasOtherProcess = hasOther
+	return report
+}
+
 func printDaemonStatusReport(report daemonStatusReport) {
 	fmt.Println("CardBot Daemon Status")
 	fmt.Println("────────────────────────────────────────")
+	fmt.Printf("Version: %s\n", report.Version)
+	fmt.Printf("PID: %d\n", report.PID)
 
 	if report.ConfigPathError != "" {
 		fmt.Printf("Config path: unavailable (%s)\n", report.ConfigPathError)
@@ -469,6 +530,14 @@ func printDaemonStatusReport(report daemonStatusReport) {
 		fmt.Printf("Launch args: %v\n", report.Daemon.LaunchArgs)
 	}
 
+	fmt.Printf("Single-instance guard: %s\n", boolEnabled(report.SingleInstanceGuard.Enabled))
+	fmt.Printf("Guard process name: %s\n", report.SingleInstanceGuard.ProcessName)
+	if report.SingleInstanceGuard.CheckError != "" {
+		fmt.Printf("Guard check: error (%s)\n", report.SingleInstanceGuard.CheckError)
+	} else {
+		fmt.Printf("Other CardBot process running: %s\n", boolYesNo(report.SingleInstanceGuard.HasOtherProcess))
+	}
+
 	if !report.LaunchAgent.Supported {
 		fmt.Println("LaunchAgent: unsupported on this platform")
 		return
@@ -488,6 +557,13 @@ func boolEnabled(v bool) string {
 		return "enabled"
 	}
 	return "disabled"
+}
+
+func boolYesNo(v bool) string {
+	if v {
+		return "yes"
+	}
+	return "no"
 }
 
 func syncDaemonAutoStartFromConfig(cfg *config.Config) {
@@ -528,6 +604,7 @@ func printSetupSummary(cfg *config.Config) {
 	fmt.Println("Setup saved.")
 	if cfg.Daemon.Enabled {
 		fmt.Println("- Background auto-launch: enabled")
+		fmt.Printf("- Daemon terminal app: %s\n", cfg.Daemon.TerminalApp)
 	} else {
 		fmt.Println("- Background auto-launch: disabled")
 	}
