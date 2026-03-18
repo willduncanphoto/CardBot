@@ -1,4 +1,4 @@
-.PHONY: build test clean qa-050
+.PHONY: build test clean qa-050 qa-051-sleepwake
 
 build:
 	go build -ldflags="-s -w" -o cardbot .
@@ -8,6 +8,9 @@ test:
 
 qa-050:
 	./scripts/qa_050_smoke.sh
+
+qa-051-sleepwake:
+	./scripts/qa_051_sleepwake_capture.sh
 
 clean:
 	rm -f cardbot coverage.out

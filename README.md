@@ -310,10 +310,12 @@ Config is stored at `~/.config/cardbot/config.json`:
 
 Run `cardbot --setup` to re-run setup and change saved preferences. Run `cardbot --reset` to clear all saved config.
 
-## Release Prep (0.5.0)
+## Release Prep
 
-- QA checklist: `docs/050_QA_CHECKLIST.md`
-- Release notes draft: `docs/050_RELEASE_NOTES_DRAFT.md`
+- 0.5.0 QA checklist: `docs/050_QA_CHECKLIST.md`
+- 0.5.0 QA run: `docs/050_QA_RUN_2026-03-18.md`
+- 0.5.0 release notes draft: `docs/050_RELEASE_NOTES_DRAFT.md`
+- 0.5.1 sleep/wake QA runbook: `docs/051_SLEEP_WAKE_QA_RUNBOOK.md`
 
 ## Roadmap
 
