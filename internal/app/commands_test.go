@@ -1,6 +1,8 @@
 package app
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -96,5 +98,27 @@ func TestHandleCopySuccess_UsesInjectedDotfileWriter(t *testing.T) {
 	}
 	if got.Destination != "/dest/path" {
 		t.Fatalf("destination = %q, want %q", got.Destination, "/dest/path")
+	}
+}
+
+func TestIsPermissionErr(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil", nil, false},
+		{"os.ErrPermission", os.ErrPermission, true},
+		{"wrapped ErrPermission", fmt.Errorf("op: %w", os.ErrPermission), true},
+		{"permission denied string", errors.New("permission denied"), true},
+		{"other error", errors.New("something else"), false},
+	}
+
+	for _, tt := range tests {
+		if got := isPermissionErr(tt.err); got != tt.want {
+			t.Fatalf("%s: isPermissionErr(%v) = %v, want %v", tt.name, tt.err, got, tt.want)
+		}
 	}
 }

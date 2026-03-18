@@ -1,6 +1,6 @@
 # CardBot
 
-A CLI tool for reading and copying camera memory cards.
+A CLI tool for camera memory cards.
 
 ## DISCLAIMER: Built with AI Coding Tools
 

@@ -245,3 +245,98 @@ func TestCopyFiltered_UsesInjectedCopyRunnerAndRestoresPhase(t *testing.T) {
 		t.Fatalf("phase = %v, want %v", got, phaseReady)
 	}
 }
+
+func TestCopyFiltered_BackslashCancels(t *testing.T) {
+	t.Parallel()
+
+	cardPath := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(cardPath, "DCIM"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Defaults()
+	cfg.Destination.Path = t.TempDir()
+	fd := newFakeDetector()
+
+	a := New(Config{
+		Cfg:         cfg,
+		DryRun:      true,
+		newDetector: func() cardDetector { return fd },
+		runCopy: func(ctx context.Context, _ cardcopy.Options, _ cardcopy.ProgressFunc) (*cardcopy.Result, error) {
+			<-ctx.Done()
+			return &cardcopy.Result{FilesCopied: 3}, context.Canceled
+		},
+	})
+	a.detector = fd
+	card := &detect.Card{Path: cardPath, Name: "CARD"}
+	a.currentCard = card
+	a.phase = phaseReady
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		a.copyFiltered(card, "all")
+	}()
+
+	// Give the copy goroutine time to block on ctx.Done.
+	time.Sleep(50 * time.Millisecond)
+	a.inputChan <- "\\"
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("copyFiltered did not return after backslash cancel")
+	}
+
+	if a.copiedModes["all"] {
+		t.Fatal("cancelled copy must not mark mode as completed")
+	}
+}
+
+func TestCopyFiltered_CardRemovedDuringCopy_CancelsAndFinishesCard(t *testing.T) {
+	t.Parallel()
+
+	cardPath := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(cardPath, "DCIM"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Defaults()
+	cfg.Destination.Path = t.TempDir()
+	fd := newFakeDetector()
+
+	a := New(Config{
+		Cfg:         cfg,
+		DryRun:      true,
+		newDetector: func() cardDetector { return fd },
+		runCopy: func(ctx context.Context, _ cardcopy.Options, _ cardcopy.ProgressFunc) (*cardcopy.Result, error) {
+			<-ctx.Done()
+			return &cardcopy.Result{FilesCopied: 7}, context.Canceled
+		},
+	})
+	a.detector = fd
+	card := &detect.Card{Path: cardPath, Name: "CARD"}
+	a.currentCard = card
+	a.phase = phaseReady
+	t.Cleanup(a.stopScanning)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		a.copyFiltered(card, "all")
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	fd.removals <- cardPath
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("copyFiltered did not return after card removal")
+	}
+
+	a.mu.Lock()
+	current := a.currentCard
+	a.mu.Unlock()
+	if current != nil {
+		t.Fatalf("currentCard should be nil after card removed during copy, got %v", current)
+	}
+}
