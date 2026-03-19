@@ -327,6 +327,7 @@ func runDaemon(cfg *config.Config, logger *cblog.Logger) {
 				CardBotBinary: cardbotBinary,
 				MountPath:     path,
 				Debugf:        debugf,
+				Logf:          logf,
 			})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "[%s] Launch failed: %v\n", time.Now().Format("2006-01-02T15:04:05"), err)
@@ -536,19 +537,23 @@ func parseDaemonDebugMode(args []string) (daemonDebugMode, error) {
 }
 
 type daemonStatusOptions struct {
-	JSON bool
+	JSON           bool
+	RecentLaunches int
 }
 
 type daemonStatusReport struct {
-	Version             string                    `json:"version"`
-	PID                 int                       `json:"pid"`
-	ConfigPath          string                    `json:"config_path,omitempty"`
-	ConfigPathError     string                    `json:"config_path_error,omitempty"`
-	ConfigLoadError     string                    `json:"config_load_error,omitempty"`
-	ConfigWarnings      []string                  `json:"config_warnings,omitempty"`
-	Daemon              daemonStatusDaemonReport  `json:"daemon"`
-	SingleInstanceGuard daemonStatusSIGuardReport `json:"single_instance_guard"`
-	LaunchAgent         daemonStatusLAReport      `json:"launch_agent"`
+	Version                     string                    `json:"version"`
+	PID                         int                       `json:"pid"`
+	ConfigPath                  string                    `json:"config_path,omitempty"`
+	ConfigPathError             string                    `json:"config_path_error,omitempty"`
+	ConfigLoadError             string                    `json:"config_load_error,omitempty"`
+	ConfigWarnings              []string                  `json:"config_warnings,omitempty"`
+	Daemon                      daemonStatusDaemonReport  `json:"daemon"`
+	SingleInstanceGuard         daemonStatusSIGuardReport `json:"single_instance_guard"`
+	LaunchAgent                 daemonStatusLAReport      `json:"launch_agent"`
+	RecentLauncherExecRequested int                       `json:"recent_launcher_exec_requested,omitempty"`
+	RecentLauncherExec          []string                  `json:"recent_launcher_exec,omitempty"`
+	RecentLauncherExecError     string                    `json:"recent_launcher_exec_error,omitempty"`
 }
 
 type daemonStatusDaemonReport struct {
@@ -581,7 +586,7 @@ func runDaemonStatusCommand(args []string) int {
 		return 2
 	}
 
-	report := collectDaemonStatusReport()
+	report := collectDaemonStatusReport(opts)
 	if opts.JSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
@@ -600,16 +605,20 @@ func parseDaemonStatusOptions(args []string) (daemonStatusOptions, error) {
 	fs := flag.NewFlagSet("daemon-status", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	jsonOut := fs.Bool("json", false, "output daemon status as JSON")
+	recentLaunches := fs.Int("recent-launches", 0, "include last N launcher exec log lines")
 	if err := fs.Parse(args); err != nil {
 		return daemonStatusOptions{}, err
 	}
 	if fs.NArg() > 0 {
 		return daemonStatusOptions{}, fmt.Errorf("unexpected arguments: %s", strings.Join(fs.Args(), " "))
 	}
-	return daemonStatusOptions{JSON: *jsonOut}, nil
+	if *recentLaunches < 0 {
+		return daemonStatusOptions{}, fmt.Errorf("--recent-launches must be >= 0")
+	}
+	return daemonStatusOptions{JSON: *jsonOut, RecentLaunches: *recentLaunches}, nil
 }
 
-func collectDaemonStatusReport() daemonStatusReport {
+func collectDaemonStatusReport(opts daemonStatusOptions) daemonStatusReport {
 	processName := "cardbot"
 	if exe, err := os.Executable(); err == nil {
 		processName = filepath.Base(exe)
@@ -648,6 +657,21 @@ func collectDaemonStatusReport() daemonStatusReport {
 		TerminalApp:  terminalApp,
 		LaunchArgs:   launchArgs,
 		Debug:        cfg.Daemon.Debug,
+	}
+
+	if opts.RecentLaunches > 0 {
+		report.RecentLauncherExecRequested = opts.RecentLaunches
+		logPath, err := config.ExpandPath(cfg.Advanced.LogFile)
+		if err != nil {
+			report.RecentLauncherExecError = fmt.Sprintf("resolving log path: %v", err)
+		} else {
+			lines, readErr := readRecentLauncherExecLines(logPath, opts.RecentLaunches)
+			if readErr != nil {
+				report.RecentLauncherExecError = readErr.Error()
+			} else {
+				report.RecentLauncherExec = lines
+			}
+		}
 	}
 
 	if !report.LaunchAgent.Supported {
@@ -719,6 +743,19 @@ func printDaemonStatusReport(report daemonStatusReport) {
 		fmt.Printf("Other CardBot process running: %s\n", boolYesNo(report.SingleInstanceGuard.HasOtherProcess))
 	}
 
+	if report.RecentLauncherExecRequested > 0 {
+		if report.RecentLauncherExecError != "" {
+			fmt.Printf("Recent launcher exec: unavailable (%s)\n", report.RecentLauncherExecError)
+		} else if len(report.RecentLauncherExec) == 0 {
+			fmt.Printf("Recent launcher exec (%d): none found\n", report.RecentLauncherExecRequested)
+		} else {
+			fmt.Printf("Recent launcher exec (%d):\n", len(report.RecentLauncherExec))
+			for _, line := range report.RecentLauncherExec {
+				fmt.Printf("  %s\n", line)
+			}
+		}
+	}
+
 	if !report.LaunchAgent.Supported {
 		fmt.Println("LaunchAgent: unsupported on this platform")
 		return
@@ -745,6 +782,61 @@ func boolYesNo(v bool) string {
 		return "yes"
 	}
 	return "no"
+}
+
+func readRecentLauncherExecLines(logPath string, limit int) ([]string, error) {
+	if strings.TrimSpace(logPath) == "" {
+		return nil, fmt.Errorf("log path is empty")
+	}
+	if limit <= 0 {
+		return []string{}, nil
+	}
+
+	lines, err := readRecentMatchingLogLines(logPath, "Launcher exec:", limit)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+		lines = []string{}
+	}
+
+	if len(lines) < limit {
+		remaining := limit - len(lines)
+		older, oldErr := readRecentMatchingLogLines(logPath+".old", "Launcher exec:", remaining)
+		if oldErr == nil {
+			lines = append(lines, older...)
+		} else if !os.IsNotExist(oldErr) {
+			return nil, oldErr
+		}
+	}
+
+	for i, j := 0, len(lines)-1; i < j; i, j = i+1, j-1 {
+		lines[i], lines[j] = lines[j], lines[i]
+	}
+	return lines, nil
+}
+
+func readRecentMatchingLogLines(path, needle string, limit int) ([]string, error) {
+	if limit <= 0 {
+		return []string{}, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	rawLines := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
+	matches := make([]string, 0, limit)
+	for i := len(rawLines) - 1; i >= 0 && len(matches) < limit; i-- {
+		line := strings.TrimSpace(rawLines[i])
+		if line == "" {
+			continue
+		}
+		if strings.Contains(line, needle) {
+			matches = append(matches, line)
+		}
+	}
+	return matches, nil
 }
 
 func syncDaemonAutoStartFromConfig(cfg *config.Config) {

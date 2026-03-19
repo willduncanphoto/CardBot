@@ -70,6 +70,7 @@ Check daemon status:
 ```bash
 cardbot daemon-status
 cardbot daemon-status --json
+cardbot daemon-status --recent-launches 5
 ```
 
 Toggle daemon debug logging:

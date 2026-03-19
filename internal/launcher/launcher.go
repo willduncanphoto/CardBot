@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"unicode"
 )
 
 // Options controls how a terminal is launched for a detected card.
@@ -15,6 +16,7 @@ type Options struct {
 	CardBotBinary string
 	MountPath     string
 	Debugf        func(format string, args ...any)
+	Logf          func(format string, args ...any)
 }
 
 type commandRunner func(name string, args ...string) error
@@ -25,8 +27,8 @@ func Launch(opts Options) error {
 }
 
 func launchWith(opts Options, run commandRunner) error {
-	binary := strings.TrimSpace(opts.CardBotBinary)
-	mountPath := strings.TrimSpace(opts.MountPath)
+	binary := stripMatchingQuotes(strings.TrimSpace(opts.CardBotBinary))
+	mountPath := stripMatchingQuotes(strings.TrimSpace(opts.MountPath))
 	if binary == "" {
 		return fmt.Errorf("cardbot binary path is required")
 	}
@@ -38,8 +40,14 @@ func launchWith(opts Options, run commandRunner) error {
 	if debugf == nil {
 		debugf = func(string, ...any) {}
 	}
+	logf := opts.Logf
+	if logf == nil {
+		logf = func(string, ...any) {}
+	}
 	runLogged := func(name string, args ...string) error {
-		debugf("exec: %s %s", name, formatCommandArgs(args))
+		formatted := formatCommandArgs(args)
+		debugf("exec: %s %s", name, formatted)
+		logf("Launcher exec: %s %s", name, formatted)
 		return run(name, args...)
 	}
 
@@ -48,6 +56,9 @@ func launchWith(opts Options, run commandRunner) error {
 
 	if len(opts.LaunchArgs) > 0 {
 		resolved := resolveLaunchArgs(opts.LaunchArgs, binary, mountPath)
+		if isGhosttyApp(app) {
+			resolved = normalizeGhosttyLaunchArgs(resolved, binary, mountPath)
+		}
 		debugf("launcher branch: custom launch args")
 		if isSystemDefaultTerminal(app) {
 			return runLogged("open", resolved...)
@@ -112,6 +123,136 @@ func resolveLaunchArgs(args []string, binary, mountPath string) []string {
 		out = append(out, replaced)
 	}
 	return out
+}
+
+func normalizeGhosttyLaunchArgs(args []string, binary, mountPath string) []string {
+	if len(args) == 0 {
+		return args
+	}
+
+	out := make([]string, 0, len(args)+1)
+	for _, arg := range args {
+		out = append(out, stripMatchingQuotes(strings.TrimSpace(arg)))
+	}
+
+	for i := 0; i < len(out)-1; i++ {
+		if out[i] != "-e" {
+			continue
+		}
+		cmd := strings.TrimSpace(out[i+1])
+		if cmd == "" {
+			break
+		}
+
+		if strings.HasPrefix(cmd, binary+" ") && strings.TrimSpace(strings.TrimPrefix(cmd, binary)) == mountPath {
+			replacement := []string{"-e", binary, mountPath}
+			prefix := append([]string{}, out[:i]...)
+			suffix := append([]string{}, out[i+2:]...)
+			return append(append(prefix, replacement...), suffix...)
+		}
+
+		if words, ok := parseSimpleShellWords(cmd); ok && len(words) == 2 && words[0] == binary && words[1] == mountPath {
+			replacement := []string{"-e", binary, mountPath}
+			prefix := append([]string{}, out[:i]...)
+			suffix := append([]string{}, out[i+2:]...)
+			return append(append(prefix, replacement...), suffix...)
+		}
+
+		break
+	}
+
+	return out
+}
+
+func stripMatchingQuotes(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) < 2 {
+		return s
+	}
+
+	if strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'") {
+		inner := s[1 : len(s)-1]
+		if !strings.Contains(inner, "'") {
+			return strings.TrimSpace(inner)
+		}
+		return s
+	}
+	if strings.HasPrefix(s, "\"") && strings.HasSuffix(s, "\"") {
+		inner := s[1 : len(s)-1]
+		if !strings.Contains(inner, "\"") {
+			return strings.TrimSpace(inner)
+		}
+		return s
+	}
+	return s
+}
+
+func parseSimpleShellWords(s string) ([]string, bool) {
+	var words []string
+	var token strings.Builder
+	inSingle := false
+	inDouble := false
+	escape := false
+	hasToken := false
+
+	flush := func() {
+		if !hasToken {
+			return
+		}
+		words = append(words, token.String())
+		token.Reset()
+		hasToken = false
+	}
+
+	for _, r := range s {
+		switch {
+		case escape:
+			token.WriteRune(r)
+			escape = false
+			hasToken = true
+		case inSingle:
+			if r == '\'' {
+				inSingle = false
+			} else {
+				token.WriteRune(r)
+			}
+			hasToken = true
+		case inDouble:
+			if r == '"' {
+				inDouble = false
+			} else if r == '\\' {
+				escape = true
+			} else {
+				token.WriteRune(r)
+			}
+			hasToken = true
+		default:
+			if unicode.IsSpace(r) {
+				flush()
+				continue
+			}
+			switch r {
+			case '\\':
+				escape = true
+				hasToken = true
+			case '\'':
+				inSingle = true
+				hasToken = true
+			case '"':
+				inDouble = true
+				hasToken = true
+			default:
+				token.WriteRune(r)
+				hasToken = true
+			}
+		}
+	}
+
+	if escape || inSingle || inDouble {
+		return nil, false
+	}
+	flush()
+	return words, true
 }
 
 func isTerminalApp(app string) bool {

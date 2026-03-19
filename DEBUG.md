@@ -52,6 +52,17 @@ JSON output includes daemon debug state under:
 }
 ```
 
+### `cardbot daemon-status --recent-launches N`
+
+Shows the last `N` `Launcher exec:` lines from the daemon log so you can verify the exact argv passed to `open`/`osascript`/terminal apps.
+
+Example:
+
+```bash
+cardbot daemon-status --recent-launches 5
+cardbot daemon-status --recent-launches 5 --json
+```
+
 ---
 
 ## Daemon Config Debug Option
