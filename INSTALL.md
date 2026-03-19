@@ -1,33 +1,58 @@
 # Installation and Build Guide
 
-## Prebuilt binaries (recommended)
+## Recommended: one-line installer
 
-Download from GitHub Releases and run directly.
+Latest release:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/install.sh | sh
+```
+
+Specific version:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/install.sh | sh -s -- --version v0.5.1
+```
+
+Install to custom path without sudo:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/install.sh | sh -s -- --install-dir "$HOME/.local/bin" --no-sudo
+```
+
+Installer options:
+
+```bash
+sh install.sh --help
+```
+
+---
+
+## Manual install from release assets
 
 ### Apple Silicon (arm64)
 
 ```bash
 curl -fL -o cardbot https://github.com/willduncanphoto/CardBot/releases/latest/download/cardbot-darwin-arm64
-chmod +x cardbot
-sudo mv cardbot /usr/local/bin/cardbot
+install -m 755 cardbot /usr/local/bin/cardbot
 ```
 
 ### Intel Mac (amd64)
 
 ```bash
 curl -fL -o cardbot https://github.com/willduncanphoto/CardBot/releases/latest/download/cardbot-darwin-amd64
-chmod +x cardbot
-sudo mv cardbot /usr/local/bin/cardbot
+install -m 755 cardbot /usr/local/bin/cardbot
 ```
 
-### Install without sudo
+### User-only install (no sudo)
 
 ```bash
-mkdir -p ~/.local/bin
-curl -fL -o ~/.local/bin/cardbot https://github.com/willduncanphoto/CardBot/releases/latest/download/cardbot-darwin-arm64
-chmod +x ~/.local/bin/cardbot
-# Ensure ~/.local/bin is in your PATH
+mkdir -p "$HOME/.local/bin"
+curl -fL -o "$HOME/.local/bin/cardbot" https://github.com/willduncanphoto/CardBot/releases/latest/download/cardbot-darwin-arm64
+chmod +x "$HOME/.local/bin/cardbot"
 ```
+
+---
 
 ## Build from source
 
@@ -55,7 +80,9 @@ go build -o cardbot .
 CGO_ENABLED=0 go build -o cardbot .
 ```
 
-## Test commands
+---
+
+## Verify / test
 
 ```bash
 go test ./... -count=1
@@ -64,10 +91,8 @@ make test
 
 ## Self-update
 
-If installed from a release binary, you can update in place:
-
 ```bash
 cardbot self-update
 ```
 
-This downloads the latest release asset for your platform and verifies SHA256 checksums.
+Self-update downloads the latest matching release asset and verifies SHA256 checksums.

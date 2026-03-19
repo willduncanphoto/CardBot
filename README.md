@@ -24,23 +24,19 @@ CardBot is a CLI tool for ingesting camera memory cards on macOS.
 
 ## Installation
 
-For complete install/build instructions, see **[INSTALL.md](INSTALL.md)**.
-
-Quick install (Apple Silicon):
+One-liner installer:
 
 ```bash
-curl -fL -o cardbot https://github.com/willduncanphoto/CardBot/releases/latest/download/cardbot-darwin-arm64
-chmod +x cardbot
-sudo mv cardbot /usr/local/bin/cardbot
+curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/install.sh | sh
 ```
 
-Quick install (Intel Mac):
+Install a specific release:
 
 ```bash
-curl -fL -o cardbot https://github.com/willduncanphoto/CardBot/releases/latest/download/cardbot-darwin-amd64
-chmod +x cardbot
-sudo mv cardbot /usr/local/bin/cardbot
+curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/install.sh | sh -s -- --version v0.5.1
 ```
+
+For manual binary install and source build instructions, see **[INSTALL.md](INSTALL.md)**.
 
 ## Usage
 
