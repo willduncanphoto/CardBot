@@ -2,7 +2,9 @@ package launcher
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -35,8 +37,19 @@ func launchWith(opts Options, run commandRunner) error {
 
 	if len(opts.LaunchArgs) > 0 {
 		resolved := resolveLaunchArgs(opts.LaunchArgs, binary, mountPath)
+		if isSystemDefaultTerminal(app) {
+			return run("open", resolved...)
+		}
 		openArgs := append([]string{"-a", app, "--args"}, resolved...)
 		return run("open", openArgs...)
+	}
+
+	if isSystemDefaultTerminal(app) {
+		scriptPath, err := writeDefaultTerminalCommandScript(binary, mountPath)
+		if err != nil {
+			return err
+		}
+		return run("open", scriptPath)
 	}
 
 	if isTerminalApp(app) {
@@ -58,7 +71,16 @@ func launchWith(opts Options, run commandRunner) error {
 func normalizeTerminalApp(app string) string {
 	app = strings.TrimSpace(app)
 	if app == "" {
+		return "Default"
+	}
+	if strings.EqualFold(app, "terminal.app") {
 		return "Terminal"
+	}
+	if strings.EqualFold(app, "default") || strings.EqualFold(app, "system default") || strings.EqualFold(app, "macos default") {
+		return "Default"
+	}
+	if strings.EqualFold(app, "ghostty") {
+		return "Ghostty"
 	}
 	return app
 }
@@ -78,6 +100,11 @@ func isTerminalApp(app string) bool {
 	return a == "terminal" || a == "terminal.app"
 }
 
+func isSystemDefaultTerminal(app string) bool {
+	a := strings.ToLower(strings.TrimSpace(app))
+	return a == "default" || a == "system default" || a == "macos default"
+}
+
 func isGhosttyApp(app string) bool {
 	return strings.Contains(strings.ToLower(app), "ghostty")
 }
@@ -87,6 +114,26 @@ func shQuote(s string) string {
 		return "''"
 	}
 	return "'" + strings.ReplaceAll(s, "'", `'"'"'`) + "'"
+}
+
+func writeDefaultTerminalCommandScript(binary, mountPath string) (string, error) {
+	f, err := os.CreateTemp("", "cardbot-launch-*.command")
+	if err != nil {
+		return "", fmt.Errorf("creating command script: %w", err)
+	}
+	defer f.Close()
+
+	scriptPath := f.Name()
+	script := fmt.Sprintf("#!/bin/sh\nrm -- %s\nexec %s %s\n", shQuote(scriptPath), shQuote(binary), shQuote(mountPath))
+	if _, err := f.WriteString(script); err != nil {
+		_ = os.Remove(scriptPath)
+		return "", fmt.Errorf("writing command script: %w", err)
+	}
+	if err := f.Chmod(0o700); err != nil {
+		_ = os.Remove(scriptPath)
+		return "", fmt.Errorf("chmod command script: %w", err)
+	}
+	return filepath.Clean(scriptPath), nil
 }
 
 func runCommand(name string, args ...string) error {

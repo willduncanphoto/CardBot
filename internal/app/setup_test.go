@@ -193,11 +193,13 @@ func TestParseDaemonTerminalChoice(t *testing.T) {
 		want   string
 		wantOK bool
 	}{
-		{"1", "Terminal", true},
+		{"1", "Default", true},
+		{"default", "Default", true},
+		{"2", "Terminal", true},
 		{"terminal", "Terminal", true},
-		{"2", "Ghostty", true},
+		{"3", "Ghostty", true},
 		{"ghostty", "Ghostty", true},
-		{"3", "", true},
+		{"4", "", true},
 		{"custom", "", true},
 		{"wat", "", false},
 	}
@@ -225,14 +227,25 @@ func TestPromptDaemonTerminalAppIO_Default(t *testing.T) {
 	if app != "Terminal" {
 		t.Fatalf("app = %q, want %q", app, "Terminal")
 	}
-	if !strings.Contains(out.String(), "Choice [1]:") {
-		t.Fatalf("expected default [1] prompt, got:\n%s", out.String())
+	if !strings.Contains(out.String(), "Choice [2]:") {
+		t.Fatalf("expected default [2] prompt, got:\n%s", out.String())
+	}
+}
+
+func TestPromptDaemonTerminalAppIO_ChooseDefault(t *testing.T) {
+	t.Parallel()
+	in := strings.NewReader("1\n")
+	var out bytes.Buffer
+
+	app := promptDaemonTerminalAppIO(in, &out, "Terminal")
+	if app != "Default" {
+		t.Fatalf("app = %q, want %q", app, "Default")
 	}
 }
 
 func TestPromptDaemonTerminalAppIO_ChooseGhostty(t *testing.T) {
 	t.Parallel()
-	in := strings.NewReader("2\n")
+	in := strings.NewReader("3\n")
 	var out bytes.Buffer
 
 	app := promptDaemonTerminalAppIO(in, &out, "Terminal")
@@ -243,7 +256,7 @@ func TestPromptDaemonTerminalAppIO_ChooseGhostty(t *testing.T) {
 
 func TestPromptDaemonTerminalAppIO_Custom(t *testing.T) {
 	t.Parallel()
-	in := strings.NewReader("3\nWezTerm\n")
+	in := strings.NewReader("4\nWezTerm\n")
 	var out bytes.Buffer
 
 	app := promptDaemonTerminalAppIO(in, &out, "Terminal")
@@ -415,7 +428,7 @@ func TestPromptNamingModeIO_EOF(t *testing.T) {
 func TestSetupPrompter_SequentialPromptsShareInputStream(t *testing.T) {
 	t.Parallel()
 
-	in := strings.NewReader("2\ny\ny\n2\n")
+	in := strings.NewReader("2\ny\ny\n3\n")
 	var out bytes.Buffer
 	p := NewSetupPrompter(in, &out)
 

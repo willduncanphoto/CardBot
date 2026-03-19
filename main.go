@@ -280,11 +280,8 @@ func runDaemon(cfg *config.Config, logger *cblog.Logger) {
 		}
 	}
 
-	appName := strings.TrimSpace(cfg.Daemon.TerminalApp)
-	if appName == "" {
-		appName = "Terminal"
-	}
-	fmt.Printf("[%s] Daemon terminal app: %s\n", time.Now().Format("2006-01-02T15:04:05"), appName)
+	appName := normalizeDaemonTerminalAppForLaunch(cfg.Daemon.TerminalApp)
+	fmt.Printf("[%s] Daemon terminal app: %s\n", time.Now().Format("2006-01-02T15:04:05"), daemonTerminalAppLabel(appName))
 	if len(cfg.Daemon.LaunchArgs) > 0 {
 		fmt.Printf("[%s] Daemon custom launch args enabled\n", time.Now().Format("2006-01-02T15:04:05"))
 	}
@@ -326,6 +323,30 @@ func runDaemon(cfg *config.Config, logger *cblog.Logger) {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func normalizeDaemonTerminalAppForLaunch(app string) string {
+	app = strings.TrimSpace(app)
+	if app == "" {
+		return "Default"
+	}
+	if strings.EqualFold(app, "terminal.app") {
+		return "Terminal"
+	}
+	if strings.EqualFold(app, "default") || strings.EqualFold(app, "system default") || strings.EqualFold(app, "macos default") {
+		return "Default"
+	}
+	if strings.EqualFold(app, "ghostty") {
+		return "Ghostty"
+	}
+	return app
+}
+
+func daemonTerminalAppLabel(app string) string {
+	if strings.EqualFold(strings.TrimSpace(app), "default") {
+		return "Default (macOS)"
+	}
+	return app
 }
 
 func daemonLaunchHint(err error) string {
@@ -511,10 +532,11 @@ func collectDaemonStatusReport() daemonStatusReport {
 	if launchArgs == nil {
 		launchArgs = []string{}
 	}
+	terminalApp := normalizeDaemonTerminalAppForLaunch(cfg.Daemon.TerminalApp)
 	report.Daemon = daemonStatusDaemonReport{
 		Enabled:      cfg.Daemon.Enabled,
 		StartAtLogin: cfg.Daemon.StartAtLogin,
-		TerminalApp:  cfg.Daemon.TerminalApp,
+		TerminalApp:  terminalApp,
 		LaunchArgs:   launchArgs,
 	}
 
@@ -571,7 +593,7 @@ func printDaemonStatusReport(report daemonStatusReport) {
 
 	fmt.Printf("Daemon enabled: %s\n", boolEnabled(report.Daemon.Enabled))
 	fmt.Printf("Start at login: %s\n", boolEnabled(report.Daemon.StartAtLogin))
-	fmt.Printf("Terminal app: %s\n", report.Daemon.TerminalApp)
+	fmt.Printf("Terminal app: %s\n", daemonTerminalAppLabel(report.Daemon.TerminalApp))
 	if len(report.Daemon.LaunchArgs) == 0 {
 		fmt.Println("Launch args: (default)")
 	} else {
@@ -652,7 +674,7 @@ func printSetupSummary(cfg *config.Config) {
 	fmt.Println("Setup saved.")
 	if cfg.Daemon.Enabled {
 		fmt.Println("- Background auto-launch: enabled")
-		fmt.Printf("- Daemon terminal app: %s\n", cfg.Daemon.TerminalApp)
+		fmt.Printf("- Daemon terminal app: %s\n", daemonTerminalAppLabel(normalizeDaemonTerminalAppForLaunch(cfg.Daemon.TerminalApp)))
 	} else {
 		fmt.Println("- Background auto-launch: disabled")
 	}

@@ -56,3 +56,30 @@ func TestDaemonLaunchHint_Unknown(t *testing.T) {
 		t.Fatalf("hint = %q, want empty", hint)
 	}
 }
+
+func TestNormalizeDaemonTerminalAppForLaunch(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{"", "Default"},
+		{"   ", "Default"},
+		{"default", "Default"},
+		{"macos default", "Default"},
+		{"system default", "Default"},
+		{"terminal.app", "Terminal"},
+		{"ghostty", "Ghostty"},
+		{"WezTerm", "WezTerm"},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("in_%q", tt.in), func(t *testing.T) {
+			got := normalizeDaemonTerminalAppForLaunch(tt.in)
+			if got != tt.want {
+				t.Fatalf("normalizeDaemonTerminalAppForLaunch(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}

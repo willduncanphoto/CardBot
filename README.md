@@ -202,6 +202,7 @@ JSON mode includes `version`, `pid`, `daemon`, `single_instance_guard`, and `lau
 
 This mode watches for card insertions without showing the interactive prompt.
 It launches your preferred terminal app from config (`daemon.terminal_app`).
+Setup supports `Default` (use your macOS default terminal app), `Terminal`, `Ghostty`, or custom app name.
 Advanced command templates can be set with `daemon.launch_args`
 using `{{cardbot_binary}}` and `{{mount_path}}` placeholders.
 

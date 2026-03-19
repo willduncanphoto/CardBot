@@ -227,9 +227,10 @@ func promptDaemonTerminalAppReader(reader *bufio.Reader, out io.Writer, defaultA
 		fmt.Fprintln(out, "────────────────────────────────────────")
 		fmt.Fprintln(out, "Choose which terminal app to open when")
 		fmt.Fprintln(out, "a card is detected in daemon mode:")
-		fmt.Fprintln(out, "[1] Terminal")
-		fmt.Fprintln(out, "[2] Ghostty")
-		fmt.Fprintln(out, "[3] Custom app name")
+		fmt.Fprintln(out, "[1] Use macOS default terminal app")
+		fmt.Fprintln(out, "[2] Terminal")
+		fmt.Fprintln(out, "[3] Ghostty")
+		fmt.Fprintln(out, "[4] Custom app name")
 		fmt.Fprintln(out)
 		fmt.Fprintf(out, "Choice [%s]: ", daemonTerminalDefaultChoice(app))
 
@@ -247,7 +248,7 @@ func promptDaemonTerminalAppReader(reader *bufio.Reader, out io.Writer, defaultA
 
 		chosen, ok := parseDaemonTerminalChoice(line)
 		if !ok {
-			fmt.Fprintln(out, "Please enter 1, 2, or 3.")
+			fmt.Fprintln(out, "Please enter 1, 2, 3, or 4.")
 			continue
 		}
 		if chosen == "" {
@@ -274,11 +275,13 @@ func promptDaemonTerminalAppReader(reader *bufio.Reader, out io.Writer, defaultA
 
 func parseDaemonTerminalChoice(input string) (string, bool) {
 	switch strings.TrimSpace(strings.ToLower(input)) {
-	case "1", "terminal", "terminal.app":
+	case "1", "default", "system default", "macos default":
+		return "Default", true
+	case "2", "terminal", "terminal.app":
 		return "Terminal", true
-	case "2", "ghostty":
+	case "3", "ghostty":
 		return "Ghostty", true
-	case "3", "custom":
+	case "4", "custom":
 		return "", true
 	default:
 		return "", false
@@ -287,12 +290,14 @@ func parseDaemonTerminalChoice(input string) (string, bool) {
 
 func daemonTerminalDefaultChoice(app string) string {
 	switch strings.ToLower(strings.TrimSpace(app)) {
-	case "terminal", "terminal.app":
+	case "default", "system default", "macos default":
 		return "1"
-	case "ghostty":
+	case "terminal", "terminal.app":
 		return "2"
-	default:
+	case "ghostty":
 		return "3"
+	default:
+		return "4"
 	}
 }
 
@@ -300,6 +305,9 @@ func normalizeDaemonTerminalApp(app string) string {
 	app = strings.TrimSpace(app)
 	if app == "" {
 		return "Terminal"
+	}
+	if strings.EqualFold(app, "default") || strings.EqualFold(app, "system default") || strings.EqualFold(app, "macos default") {
+		return "Default"
 	}
 	if strings.EqualFold(app, "terminal.app") {
 		return "Terminal"

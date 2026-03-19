@@ -28,7 +28,7 @@ func TestPromptDestinationReadlineIO_UsesProvidedReader(t *testing.T) {
 func TestSetupInput_SequentialAcrossDestinationAndPrompts(t *testing.T) {
 	t.Parallel()
 
-	in := bufio.NewReader(strings.NewReader("~/Pictures/Ingest\n2\ny\ny\n2\n"))
+	in := bufio.NewReader(strings.NewReader("~/Pictures/Ingest\n2\ny\ny\n3\n"))
 	var out bytes.Buffer
 
 	dest := promptDestinationReadlineIO("~/Pictures/CardBot", in, &out)

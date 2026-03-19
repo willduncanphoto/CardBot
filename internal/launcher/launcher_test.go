@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -10,7 +11,7 @@ type recordedCommand struct {
 	args []string
 }
 
-func TestLaunchWith_TerminalDefault_UsesAppleScript(t *testing.T) {
+func TestLaunchWith_SystemDefault_UsesOpenWithCommandScript(t *testing.T) {
 	var got recordedCommand
 	run := func(name string, args ...string) error {
 		got = recordedCommand{name: name, args: append([]string{}, args...)}
@@ -18,6 +19,46 @@ func TestLaunchWith_TerminalDefault_UsesAppleScript(t *testing.T) {
 	}
 
 	err := launchWith(Options{
+		TerminalApp:   "Default",
+		CardBotBinary: "/usr/local/bin/cardbot",
+		MountPath:     "/Volumes/NIKON Z 9",
+	}, run)
+	if err != nil {
+		t.Fatalf("launchWith error: %v", err)
+	}
+	if got.name != "open" {
+		t.Fatalf("command name = %q, want %q", got.name, "open")
+	}
+	if len(got.args) != 1 {
+		t.Fatalf("args = %v, want exactly one script path", got.args)
+	}
+	scriptPath := got.args[0]
+	t.Cleanup(func() { _ = os.Remove(scriptPath) })
+	if !strings.HasSuffix(scriptPath, ".command") {
+		t.Fatalf("script path = %q, want .command suffix", scriptPath)
+	}
+	scriptBytes, readErr := os.ReadFile(scriptPath)
+	if readErr != nil {
+		t.Fatalf("read script %q: %v", scriptPath, readErr)
+	}
+	script := string(scriptBytes)
+	if !strings.Contains(script, "/usr/local/bin/cardbot") {
+		t.Fatalf("script missing cardbot path: %s", script)
+	}
+	if !strings.Contains(script, "/Volumes/NIKON Z 9") {
+		t.Fatalf("script missing mount path: %s", script)
+	}
+}
+
+func TestLaunchWith_TerminalApp_UsesAppleScript(t *testing.T) {
+	var got recordedCommand
+	run := func(name string, args ...string) error {
+		got = recordedCommand{name: name, args: append([]string{}, args...)}
+		return nil
+	}
+
+	err := launchWith(Options{
+		TerminalApp:   "Terminal",
 		CardBotBinary: "/usr/local/bin/cardbot",
 		MountPath:     "/Volumes/NIKON Z 9",
 	}, run)
@@ -30,12 +71,6 @@ func TestLaunchWith_TerminalDefault_UsesAppleScript(t *testing.T) {
 	joined := strings.Join(got.args, " ")
 	if !strings.Contains(joined, "tell application \"Terminal\" to do script") {
 		t.Fatalf("args missing Terminal script command: %v", got.args)
-	}
-	if !strings.Contains(joined, "/usr/local/bin/cardbot") {
-		t.Fatalf("args missing cardbot binary path: %v", got.args)
-	}
-	if !strings.Contains(joined, "/Volumes/NIKON Z 9") {
-		t.Fatalf("args missing mount path: %v", got.args)
 	}
 }
 
@@ -96,7 +131,7 @@ func TestLaunchWith_CustomLaunchArgs_TemplatesResolved(t *testing.T) {
 	}
 }
 
-func TestLaunchWith_EmptyTerminalApp_DefaultsToTerminal(t *testing.T) {
+func TestLaunchWith_EmptyTerminalApp_DefaultsToSystemDefault(t *testing.T) {
 	var got recordedCommand
 	run := func(name string, args ...string) error {
 		got = recordedCommand{name: name, args: append([]string{}, args...)}
@@ -111,9 +146,13 @@ func TestLaunchWith_EmptyTerminalApp_DefaultsToTerminal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("launchWith error: %v", err)
 	}
-	if got.name != "osascript" {
-		t.Fatalf("command name = %q, want %q", got.name, "osascript")
+	if got.name != "open" {
+		t.Fatalf("command name = %q, want %q", got.name, "open")
 	}
+	if len(got.args) != 1 || !strings.HasSuffix(got.args[0], ".command") {
+		t.Fatalf("args = %v, want one .command path", got.args)
+	}
+	t.Cleanup(func() { _ = os.Remove(got.args[0]) })
 }
 
 func TestLaunchWith_RequiresBinaryAndMountPath(t *testing.T) {
