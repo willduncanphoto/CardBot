@@ -188,6 +188,12 @@ func (a *App) Run() error {
 
 // StartScanning starts the scanning spinner.
 func (a *App) StartScanning() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.startScanningLocked()
+}
+
+func (a *App) startScanningLocked() {
 	if a.spinner != nil {
 		a.spinner.Stop()
 	}
@@ -195,11 +201,17 @@ func (a *App) StartScanning() {
 	s.Prefix = fmt.Sprintf("[%s] Scanning ", ts())
 	s.Start()
 	a.spinner = s
-	a.setPhase(phaseScanning)
+	a.setPhaseLocked(phaseScanning)
 }
 
 // stopScanning stops and clears the scanning spinner.
 func (a *App) stopScanning() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.stopScanningLocked()
+}
+
+func (a *App) stopScanningLocked() {
 	if a.spinner != nil {
 		a.spinner.Stop()
 		a.spinner = nil

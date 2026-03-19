@@ -27,7 +27,7 @@ func (a *App) handleCardEvent(card *detect.Card) {
 		return
 	}
 
-	a.stopScanning()
+	a.stopScanningLocked()
 
 	if a.currentCard == nil {
 		a.currentCard = card

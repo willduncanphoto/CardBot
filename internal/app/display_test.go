@@ -1,9 +1,6 @@
 package app
 
 import (
-	"bytes"
-	"io"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -15,26 +12,7 @@ import (
 
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
-
-	orig := os.Stdout
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe: %v", err)
-	}
-	defer r.Close()
-	os.Stdout = w
-	defer func() { os.Stdout = orig }()
-
-	done := make(chan string, 1)
-	go func() {
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		done <- buf.String()
-	}()
-
-	fn()
-	_ = w.Close()
-	return <-done
+	return captureStdoutFD(t, fn)
 }
 
 func TestFriendlyErr(t *testing.T) {
