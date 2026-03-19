@@ -31,6 +31,9 @@ func TestDefaults(t *testing.T) {
 	if cfg.Daemon.LaunchArgs != nil {
 		t.Errorf("Daemon.LaunchArgs = %v, want nil", cfg.Daemon.LaunchArgs)
 	}
+	if cfg.Daemon.Debug {
+		t.Error("Daemon.Debug should default to false")
+	}
 	if cfg.Advanced.BufferSizeKB != 256 {
 		t.Errorf("BufferSizeKB = %d, want 256", cfg.Advanced.BufferSizeKB)
 	}
@@ -52,6 +55,7 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	cfg.Daemon.StartAtLogin = true
 	cfg.Daemon.TerminalApp = "Ghostty"
 	cfg.Daemon.LaunchArgs = []string{"-e", "cardbot {{mount_path}}"}
+	cfg.Daemon.Debug = true
 
 	if err := Save(cfg, path); err != nil {
 		t.Fatal(err)
@@ -81,6 +85,9 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	}
 	if len(loaded.Daemon.LaunchArgs) != 2 {
 		t.Errorf("Daemon.LaunchArgs len = %d, want 2", len(loaded.Daemon.LaunchArgs))
+	}
+	if !loaded.Daemon.Debug {
+		t.Error("Daemon.Debug = false, want true")
 	}
 	if loaded.Schema != schemaVersion {
 		t.Errorf("Schema = %q, want %q", loaded.Schema, schemaVersion)
@@ -255,6 +262,9 @@ func TestLoad_PartialConfig(t *testing.T) {
 	}
 	if len(cfg.Daemon.LaunchArgs) != len(defaults.Daemon.LaunchArgs) {
 		t.Errorf("Daemon.LaunchArgs len = %d, want %d (default)", len(cfg.Daemon.LaunchArgs), len(defaults.Daemon.LaunchArgs))
+	}
+	if cfg.Daemon.Debug != defaults.Daemon.Debug {
+		t.Errorf("Daemon.Debug = %v, want %v (default)", cfg.Daemon.Debug, defaults.Daemon.Debug)
 	}
 }
 

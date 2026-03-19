@@ -14,6 +14,7 @@ type Options struct {
 	LaunchArgs    []string
 	CardBotBinary string
 	MountPath     string
+	Debugf        func(format string, args ...any)
 }
 
 type commandRunner func(name string, args ...string) error
@@ -33,39 +34,57 @@ func launchWith(opts Options, run commandRunner) error {
 		return fmt.Errorf("mount path is required")
 	}
 
+	debugf := opts.Debugf
+	if debugf == nil {
+		debugf = func(string, ...any) {}
+	}
+	runLogged := func(name string, args ...string) error {
+		debugf("exec: %s %s", name, formatCommandArgs(args))
+		return run(name, args...)
+	}
+
 	app := normalizeTerminalApp(opts.TerminalApp)
+	debugf("launcher config: app=%q binary=%q mount=%q custom_args=%d", app, binary, mountPath, len(opts.LaunchArgs))
 
 	if len(opts.LaunchArgs) > 0 {
 		resolved := resolveLaunchArgs(opts.LaunchArgs, binary, mountPath)
+		debugf("launcher branch: custom launch args")
 		if isSystemDefaultTerminal(app) {
-			return run("open", resolved...)
+			return runLogged("open", resolved...)
 		}
 		openArgs := append([]string{"-a", app, "--args"}, resolved...)
-		return run("open", openArgs...)
+		return runLogged("open", openArgs...)
 	}
 
 	if isSystemDefaultTerminal(app) {
+		debugf("launcher branch: system default terminal")
 		scriptPath, err := writeDefaultTerminalCommandScript(binary, mountPath)
 		if err != nil {
 			return err
 		}
-		return run("open", scriptPath)
+		debugf("generated command script: %s", scriptPath)
+		return runLogged("open", scriptPath)
 	}
 
 	if isTerminalApp(app) {
+		debugf("launcher branch: Terminal AppleScript")
 		cmd := fmt.Sprintf("%s %s", shQuote(binary), shQuote(mountPath))
-		return run("osascript",
+		return runLogged("osascript",
 			"-e", fmt.Sprintf(`tell application "Terminal" to do script %q`, cmd),
 			"-e", `activate application "Terminal"`,
 		)
 	}
 
 	if isGhosttyApp(app) {
-		cmd := fmt.Sprintf("%s %s", shQuote(binary), shQuote(mountPath))
-		return run("open", "-a", app, "--args", "-e", cmd)
+		debugf("launcher branch: Ghostty")
+		// Ghostty expects command and argv as separate arguments after -e.
+		// Passing a single shell-quoted string causes it to look for a binary
+		// whose name includes spaces (e.g. "/usr/local/bin/cardbot /Volumes/...").
+		return runLogged("open", "-a", app, "--args", "-e", binary, mountPath)
 	}
 
-	return run("open", "-a", app, "--args", binary, mountPath)
+	debugf("launcher branch: generic app")
+	return runLogged("open", "-a", app, "--args", binary, mountPath)
 }
 
 func normalizeTerminalApp(app string) string {
@@ -114,6 +133,17 @@ func shQuote(s string) string {
 		return "''"
 	}
 	return "'" + strings.ReplaceAll(s, "'", `'"'"'`) + "'"
+}
+
+func formatCommandArgs(args []string) string {
+	if len(args) == 0 {
+		return ""
+	}
+	quoted := make([]string, 0, len(args))
+	for _, arg := range args {
+		quoted = append(quoted, shQuote(arg))
+	}
+	return strings.Join(quoted, " ")
 }
 
 func writeDefaultTerminalCommandScript(binary, mountPath string) (string, error) {

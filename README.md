@@ -72,6 +72,16 @@ cardbot daemon-status
 cardbot daemon-status --json
 ```
 
+Toggle daemon debug logging:
+
+```bash
+cardbot daemon-debug status
+cardbot daemon-debug on
+cardbot daemon-debug off
+```
+
+For full daemon debugging details and expected debug output, see **[DEBUG.md](DEBUG.md)**.
+
 ## CLI flags
 
 | Flag | Description |
@@ -121,11 +131,13 @@ Important daemon fields:
   "enabled": false,
   "start_at_login": false,
   "terminal_app": "Terminal",
-  "launch_args": []
+  "launch_args": [],
+  "debug": false
 }
 ```
 
 `terminal_app` can be `Default`, `Terminal`, `Ghostty`, or a custom app name.
+Set `daemon.debug` to `true` to enable verbose daemon/launcher debug logging.
 
 ## Roadmap
 

@@ -92,14 +92,17 @@ func TestLaunchWith_GhosttyDefault_UsesOpenWithE(t *testing.T) {
 	if got.name != "open" {
 		t.Fatalf("command name = %q, want %q", got.name, "open")
 	}
-	if len(got.args) < 5 {
-		t.Fatalf("args too short: %v", got.args)
+	if len(got.args) != 6 {
+		t.Fatalf("args = %v, want 6 args", got.args)
 	}
 	if got.args[0] != "-a" || got.args[1] != "Ghostty" {
 		t.Fatalf("args = %v, want '-a Ghostty ...'", got.args)
 	}
 	if got.args[2] != "--args" || got.args[3] != "-e" {
 		t.Fatalf("args = %v, want '--args -e ...'", got.args)
+	}
+	if got.args[4] != "/usr/local/bin/cardbot" || got.args[5] != "/Volumes/CARD" {
+		t.Fatalf("args = %v, want binary + mount path passed separately", got.args)
 	}
 }
 

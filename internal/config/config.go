@@ -41,6 +41,7 @@ type Daemon struct {
 	StartAtLogin bool     `json:"start_at_login"`
 	TerminalApp  string   `json:"terminal_app"`
 	LaunchArgs   []string `json:"launch_args"`
+	Debug        bool     `json:"debug"`
 }
 
 // Output settings.
@@ -70,6 +71,7 @@ func Defaults() *Config {
 			StartAtLogin: false,
 			TerminalApp:  "Terminal",
 			LaunchArgs:   nil,
+			Debug:        false,
 		},
 		Output: Output{
 			Color: true,
