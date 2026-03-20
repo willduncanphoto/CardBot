@@ -37,12 +37,11 @@ type Naming struct {
 
 // Daemon settings.
 type Daemon struct {
-	Enabled          bool     `json:"enabled"`
-	StartAtLogin     bool     `json:"start_at_login"`
-	TerminalApp      string   `json:"terminal_app"`
-	WorkingDirectory string   `json:"working_directory"`
-	LaunchArgs       []string `json:"launch_args"`
-	Debug            bool     `json:"debug"`
+	Enabled      bool     `json:"enabled"`
+	StartAtLogin bool     `json:"start_at_login"`
+	TerminalApp  string   `json:"terminal_app"`
+	LaunchArgs   []string `json:"launch_args"`
+	Debug        bool     `json:"debug"`
 }
 
 // Output settings.
@@ -68,12 +67,11 @@ func Defaults() *Config {
 			Mode: NamingOriginal,
 		},
 		Daemon: Daemon{
-			Enabled:          false,
-			StartAtLogin:     false,
-			TerminalApp:      "Terminal",
-			WorkingDirectory: "~",
-			LaunchArgs:       nil,
-			Debug:            false,
+			Enabled:      false,
+			StartAtLogin: false,
+			TerminalApp:  "Terminal",
+			LaunchArgs:   nil,
+			Debug:        false,
 		},
 		Output: Output{
 			Color: true,
@@ -160,10 +158,6 @@ func Load(path string) (*Config, []string, error) {
 	if strings.TrimSpace(cfg.Daemon.TerminalApp) == "" {
 		warnings = append(warnings, "daemon.terminal_app is empty, using Terminal")
 		cfg.Daemon.TerminalApp = "Terminal"
-	}
-	if strings.TrimSpace(cfg.Daemon.WorkingDirectory) == "" {
-		warnings = append(warnings, "daemon.working_directory is empty, using ~")
-		cfg.Daemon.WorkingDirectory = "~"
 	}
 
 	return cfg, warnings, nil

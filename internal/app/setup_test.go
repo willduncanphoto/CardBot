@@ -24,7 +24,6 @@ func TestRunSetup_WritesNamingModeToConfig(t *testing.T) {
 		func(bool) bool { return true },
 		func(bool) bool { return true },
 		func(string) string { return "Ghostty" },
-		func(string) string { return "~/Code" },
 	)
 	if err != nil {
 		t.Fatalf("RunSetup error: %v", err)
@@ -52,9 +51,6 @@ func TestRunSetup_WritesNamingModeToConfig(t *testing.T) {
 	if loaded.Daemon.TerminalApp != "Ghostty" {
 		t.Fatalf("Daemon.TerminalApp = %q, want %q", loaded.Daemon.TerminalApp, "Ghostty")
 	}
-	if loaded.Daemon.WorkingDirectory != "~/Code" {
-		t.Fatalf("Daemon.WorkingDirectory = %q, want %q", loaded.Daemon.WorkingDirectory, "~/Code")
-	}
 }
 
 func TestRunSetup_NormalizesInvalidNamingMode(t *testing.T) {
@@ -70,14 +66,7 @@ func TestRunSetup_NormalizesInvalidNamingMode(t *testing.T) {
 		func(string) string { return "banana" },
 		func(bool) bool { return false },
 		func(bool) bool { return true },
-		func(string) string {
-			t.Fatal("terminal app prompt should not be called when daemon is disabled")
-			return "Ghostty"
-		},
-		func(string) string {
-			t.Fatal("working directory prompt should not be called when daemon is disabled")
-			return "~"
-		},
+		func(string) string { return "Ghostty" },
 	)
 	if err != nil {
 		t.Fatalf("RunSetup error: %v", err)
@@ -98,11 +87,13 @@ func TestRunSetup_NormalizesInvalidNamingMode(t *testing.T) {
 	}
 }
 
-func TestRunSetup_DaemonDisabled_SkipsStartAtLoginPrompt(t *testing.T) {
+func TestRunSetup_DaemonDisabled_StillAsksAllDaemonQuestions(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.Defaults()
 	cfgPath := filepath.Join(t.TempDir(), "config.json")
+	askedStartAtLogin := false
+	askedTerminalApp := false
 
 	err := RunSetup(
 		cfg,
@@ -111,20 +102,22 @@ func TestRunSetup_DaemonDisabled_SkipsStartAtLoginPrompt(t *testing.T) {
 		func(string) string { return config.NamingOriginal },
 		func(bool) bool { return false },
 		func(bool) bool {
-			t.Fatal("start-at-login prompt should not be called when daemon is disabled")
+			askedStartAtLogin = true
 			return true
 		},
 		func(string) string {
-			t.Fatal("terminal app prompt should not be called when daemon is disabled")
-			return "Terminal"
-		},
-		func(string) string {
-			t.Fatal("working directory prompt should not be called when daemon is disabled")
-			return "~"
+			askedTerminalApp = true
+			return "Ghostty"
 		},
 	)
 	if err != nil {
 		t.Fatalf("RunSetup error: %v", err)
+	}
+	if !askedStartAtLogin {
+		t.Fatal("expected start-at-login prompt to be asked")
+	}
+	if !askedTerminalApp {
+		t.Fatal("expected terminal app prompt to be asked")
 	}
 
 	loaded, _, err := config.Load(cfgPath)
@@ -132,7 +125,10 @@ func TestRunSetup_DaemonDisabled_SkipsStartAtLoginPrompt(t *testing.T) {
 		t.Fatalf("load config: %v", err)
 	}
 	if loaded.Daemon.StartAtLogin {
-		t.Fatal("Daemon.StartAtLogin should remain false")
+		t.Fatal("Daemon.StartAtLogin should be forced false when daemon is disabled")
+	}
+	if loaded.Daemon.TerminalApp != "Ghostty" {
+		t.Fatalf("Daemon.TerminalApp = %q, want %q", loaded.Daemon.TerminalApp, "Ghostty")
 	}
 }
 
@@ -277,30 +273,6 @@ func TestPromptDaemonTerminalAppIO_Custom(t *testing.T) {
 	}
 }
 
-func TestPromptDaemonWorkingDirectoryIO_Default(t *testing.T) {
-	t.Parallel()
-	in := strings.NewReader("\n")
-	var out bytes.Buffer
-
-	dir := promptDaemonWorkingDirectoryIO(in, &out, "~")
-	if dir != "~" {
-		t.Fatalf("dir = %q, want %q", dir, "~")
-	}
-	if !strings.Contains(out.String(), "Path [~]:") {
-		t.Fatalf("expected default path prompt, got:\n%s", out.String())
-	}
-}
-
-func TestPromptDaemonWorkingDirectoryIO_Custom(t *testing.T) {
-	t.Parallel()
-	in := strings.NewReader("~/Code\n")
-	var out bytes.Buffer
-
-	dir := promptDaemonWorkingDirectoryIO(in, &out, "~")
-	if dir != "~/Code" {
-		t.Fatalf("dir = %q, want %q", dir, "~/Code")
-	}
-}
 
 func TestPromptDaemonEnabledIO_DefaultFalse(t *testing.T) {
 	t.Parallel()
@@ -465,7 +437,7 @@ func TestPromptNamingModeIO_EOF(t *testing.T) {
 func TestSetupPrompter_SequentialPromptsShareInputStream(t *testing.T) {
 	t.Parallel()
 
-	in := strings.NewReader("2\ny\ny\n3\n~/Code\n")
+	in := strings.NewReader("2\ny\ny\n3\n")
 	var out bytes.Buffer
 	p := NewSetupPrompter(in, &out)
 
@@ -480,9 +452,6 @@ func TestSetupPrompter_SequentialPromptsShareInputStream(t *testing.T) {
 	}
 	if appName := p.PromptDaemonTerminalApp("Terminal"); appName != "Ghostty" {
 		t.Fatalf("PromptDaemonTerminalApp = %q, want %q", appName, "Ghostty")
-	}
-	if dir := p.PromptDaemonWorkingDirectory("~"); dir != "~/Code" {
-		t.Fatalf("PromptDaemonWorkingDirectory = %q, want %q", dir, "~/Code")
 	}
 }
 

@@ -44,10 +44,6 @@ func (p *SetupPrompter) PromptDaemonTerminalApp(defaultApp string) string {
 	return promptDaemonTerminalAppReader(p.reader, p.out, defaultApp)
 }
 
-func (p *SetupPrompter) PromptDaemonWorkingDirectory(defaultDir string) string {
-	return promptDaemonWorkingDirectoryReader(p.reader, p.out, defaultDir)
-}
-
 // RunSetup executes first-time/--setup prompts and persists config.
 func RunSetup(
 	cfg *config.Config,
@@ -57,23 +53,16 @@ func RunSetup(
 	promptDaemonEnabledFn func(bool) bool,
 	promptDaemonStartAtLoginFn func(bool) bool,
 	promptDaemonTerminalAppFn func(string) string,
-	promptDaemonWorkingDirectoryFn func(string) string,
 ) error {
 	cfg.Destination.Path = config.ContractPath(promptDestinationFn(cfg.Destination.Path))
 	cfg.Naming.Mode = config.NormalizeNamingMode(promptNamingFn(cfg.Naming.Mode))
 	cfg.Daemon.Enabled = promptDaemonEnabledFn(cfg.Daemon.Enabled)
-	if cfg.Daemon.Enabled {
-		cfg.Daemon.StartAtLogin = promptDaemonStartAtLoginFn(cfg.Daemon.StartAtLogin)
-		cfg.Daemon.TerminalApp = normalizeDaemonTerminalApp(promptDaemonTerminalAppFn(cfg.Daemon.TerminalApp))
-		if promptDaemonWorkingDirectoryFn != nil {
-			cfg.Daemon.WorkingDirectory = normalizeDaemonWorkingDirectory(promptDaemonWorkingDirectoryFn(cfg.Daemon.WorkingDirectory))
-		} else {
-			cfg.Daemon.WorkingDirectory = normalizeDaemonWorkingDirectory(cfg.Daemon.WorkingDirectory)
-		}
-	} else {
+	// Always ask every daemon question during setup.
+	cfg.Daemon.StartAtLogin = promptDaemonStartAtLoginFn(cfg.Daemon.StartAtLogin)
+	cfg.Daemon.TerminalApp = normalizeDaemonTerminalApp(promptDaemonTerminalAppFn(cfg.Daemon.TerminalApp))
+	if !cfg.Daemon.Enabled {
 		cfg.Daemon.StartAtLogin = false
 	}
-	cfg.Daemon.WorkingDirectory = normalizeDaemonWorkingDirectory(cfg.Daemon.WorkingDirectory)
 
 	if cfgPath == "" {
 		return nil
@@ -101,11 +90,6 @@ func PromptDaemonTerminalApp(defaultApp string) string {
 	return promptDaemonTerminalAppIO(os.Stdin, os.Stdout, defaultApp)
 }
 
-// PromptDaemonWorkingDirectory asks which working directory daemon-launched
-// terminal windows should start in.
-func PromptDaemonWorkingDirectory(defaultDir string) string {
-	return promptDaemonWorkingDirectoryIO(os.Stdin, os.Stdout, defaultDir)
-}
 
 func promptNamingModeIO(in io.Reader, out io.Writer, defaultMode string) string {
 	return promptNamingModeReader(bufio.NewReader(in), out, defaultMode)
@@ -290,39 +274,6 @@ func promptDaemonTerminalAppReader(reader *bufio.Reader, out io.Writer, defaultA
 	}
 }
 
-func promptDaemonWorkingDirectoryIO(in io.Reader, out io.Writer, defaultDir string) string {
-	return promptDaemonWorkingDirectoryReader(bufio.NewReader(in), out, defaultDir)
-}
-
-func promptDaemonWorkingDirectoryReader(reader *bufio.Reader, out io.Writer, defaultDir string) string {
-	def := normalizeDaemonWorkingDirectory(defaultDir)
-
-	for {
-		fmt.Fprintln(out)
-		fmt.Fprintln(out, "Daemon Window Working Directory")
-		fmt.Fprintln(out, "────────────────────────────────────────")
-		fmt.Fprintln(out, "Where should daemon-launched terminal windows start?")
-		fmt.Fprintln(out, "Use ~ for your home folder or enter any path.")
-		fmt.Fprintf(out, "Path [%s]: ", def)
-
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Fprintln(out)
-			fmt.Fprintf(out, "Daemon working directory: %s\n", def)
-			return def
-		}
-		line = strings.TrimSpace(line)
-		if line == "" {
-			fmt.Fprintf(out, "Daemon working directory: %s\n", def)
-			return def
-		}
-
-		chosen := normalizeDaemonWorkingDirectory(line)
-		fmt.Fprintf(out, "Daemon working directory: %s\n", chosen)
-		return chosen
-	}
-}
-
 func parseDaemonTerminalChoice(input string) (string, bool) {
 	switch strings.TrimSpace(strings.ToLower(input)) {
 	case "1", "default", "system default", "macos default":
@@ -366,17 +317,6 @@ func normalizeDaemonTerminalApp(app string) string {
 		return "Ghostty"
 	}
 	return app
-}
-
-func normalizeDaemonWorkingDirectory(dir string) string {
-	dir = strings.TrimSpace(dir)
-	if dir == "" {
-		return "~"
-	}
-	if strings.EqualFold(dir, "home") {
-		return "~"
-	}
-	return config.ContractPath(dir)
 }
 
 func parseYesNo(input string) (bool, bool) {
