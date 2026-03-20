@@ -63,7 +63,13 @@ func launchWith(opts Options, run commandRunner) error {
 		if isSystemDefaultTerminal(app) {
 			return runLogged("open", resolved...)
 		}
-		openArgs := append([]string{"-a", app, "--args"}, resolved...)
+		openAppFlag := "-a"
+		if isGhosttyApp(app) {
+			// Ghostty on macOS requires -n to reliably open a fresh terminal window
+			// when Ghostty is already running.
+			openAppFlag = "-na"
+		}
+		openArgs := append([]string{openAppFlag, app, "--args"}, resolved...)
 		return runLogged("open", openArgs...)
 	}
 
@@ -91,7 +97,8 @@ func launchWith(opts Options, run commandRunner) error {
 		// Ghostty expects command and argv as separate arguments after -e.
 		// Passing a single shell-quoted string causes it to look for a binary
 		// whose name includes spaces (e.g. "/usr/local/bin/cardbot /Volumes/...").
-		return runLogged("open", "-a", app, "--args", "-e", binary, mountPath)
+		// Use -na to force a fresh window when Ghostty is already running.
+		return runLogged("open", "-na", app, "--args", "-e", binary, mountPath)
 	}
 
 	debugf("launcher branch: generic app")

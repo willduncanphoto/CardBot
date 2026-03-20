@@ -95,8 +95,8 @@ func TestLaunchWith_GhosttyDefault_UsesOpenWithE(t *testing.T) {
 	if len(got.args) != 6 {
 		t.Fatalf("args = %v, want 6 args", got.args)
 	}
-	if got.args[0] != "-a" || got.args[1] != "Ghostty" {
-		t.Fatalf("args = %v, want '-a Ghostty ...'", got.args)
+	if got.args[0] != "-na" || got.args[1] != "Ghostty" {
+		t.Fatalf("args = %v, want '-na Ghostty ...'", got.args)
 	}
 	if got.args[2] != "--args" || got.args[3] != "-e" {
 		t.Fatalf("args = %v, want '--args -e ...'", got.args)
@@ -130,6 +130,9 @@ func TestLaunchWith_CustomLaunchArgs_TemplatesResolved(t *testing.T) {
 	}
 	if len(got.args) != 6 {
 		t.Fatalf("args = %v, want 6 args", got.args)
+	}
+	if got.args[0] != "-na" || got.args[1] != "Ghostty" {
+		t.Fatalf("args = %v, want '-na Ghostty ...'", got.args)
 	}
 	if got.args[3] != "-e" || got.args[4] != "/opt/cardbot" || got.args[5] != "/Volumes/NIKON Z 9" {
 		t.Fatalf("args = %v, want '--args -e /opt/cardbot /Volumes/NIKON Z 9'", got.args)
