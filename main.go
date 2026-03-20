@@ -311,7 +311,8 @@ func runDaemon(cfg *config.Config, logger *cblog.Logger) {
 			debugf("card insert callback: mount=%q", path)
 
 			// Check if another daemon instance is already running using PID file.
-			hasOtherDaemon, checkErr := daemonHasRunningInstance()
+			// Skip self-check since the PID file contains our own PID during startup.
+			hasOtherDaemon, checkErr := daemonHasRunningInstance(os.Getpid())
 			if checkErr != nil {
 				fmt.Fprintf(os.Stderr, "[%s] Warning: daemon instance check failed (%v)\n", time.Now().Format("2006-01-02T15:04:05"), checkErr)
 				logf("Daemon instance check failed: %v", checkErr)
@@ -386,7 +387,9 @@ func daemonPidPath() (string, error) {
 
 // daemonHasRunningInstance checks if another daemon instance is running.
 // Uses the PID file to determine if a daemon process exists.
-func daemonHasRunningInstance() (bool, error) {
+// selfPID is excluded from the check so the running daemon doesn't block itself
+// during startup (e.g. when processing an already-mounted card from scanExistingVolumes).
+func daemonHasRunningInstance(selfPID int) (bool, error) {
 	pidPath, err := daemonPidPath()
 	if err != nil {
 		return false, fmt.Errorf("resolving PID path: %w", err)
@@ -403,6 +406,12 @@ func daemonHasRunningInstance() (bool, error) {
 	pid, err := strconv.Atoi(strings.TrimSpace(string(pidData)))
 	if err != nil {
 		// Corrupted PID file; treat as no daemon running
+		return false, nil
+	}
+
+	// Don't count our own PID — the daemon writes its PID before processing
+	// startup events like already-mounted cards.
+	if pid == selfPID {
 		return false, nil
 	}
 
