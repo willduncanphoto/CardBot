@@ -26,7 +26,7 @@ import (
 	"github.com/illwill/cardbot/internal/pick"
 )
 
-const version = "0.5.3"
+const version = "0.5.4"
 
 func main() {
 	if len(os.Args) > 1 {
@@ -50,7 +50,7 @@ func main() {
 		flagDest          = flag.String("dest", "", "destination path for copied cards")
 		flagDryRun        = flag.Bool("dry-run", false, "scan cards but do not copy files")
 		flagReset         = flag.Bool("reset", false, "clear saved config and exit")
-		flagSetup         = flag.Bool("setup", false, "re-run first-time setup (destination, naming, daemon options)")
+		flagSetup         = flag.Bool("setup", false, "re-run first-time setup (destination, naming)")
 		flagDaemon        = flag.Bool("daemon", false, "run as background daemon watching for cards")
 		flagTargetPathB64 = flag.String("target-path-b64", "", "internal: base64-encoded target card path")
 	)
@@ -113,7 +113,7 @@ func main() {
 		promptDestinationFn := func(defaultPath string) string {
 			return promptDestinationWithIO(defaultPath, setupReader, os.Stdout)
 		}
-		if saveErr := app.RunSetup(cfg, cfgPath, promptDestinationFn, setupPrompter.PromptNamingMode, setupPrompter.PromptDaemonEnabled, setupPrompter.PromptDaemonStartAtLogin); saveErr != nil {
+		if saveErr := app.RunSetup(cfg, cfgPath, promptDestinationFn, setupPrompter.PromptNamingMode); saveErr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not save config: %s\n", app.FriendlyErr(saveErr))
 		}
 		syncDaemonAutoStartFromConfig(cfg)
@@ -535,7 +535,6 @@ func runInstallDaemonCommand() int {
 
 	fmt.Printf("Installed LaunchAgent: %s\n", plist)
 	fmt.Println("CardBot daemon will start at login.")
-	fmt.Println("Tip: run `cardbot --setup` anytime to change daemon/login preferences.")
 	return 0
 }
 
@@ -552,7 +551,6 @@ func runUninstallDaemonCommand() int {
 
 	fmt.Printf("Uninstalled LaunchAgent: %s\n", plist)
 	fmt.Println("CardBot daemon will no longer start at login.")
-	fmt.Println("Tip: run `cardbot --setup` anytime to change daemon/login preferences.")
 	return 0
 }
 
@@ -1052,23 +1050,10 @@ func printSetupSummary(cfg *config.Config) {
 	}
 
 	fmt.Println("Setup saved.")
-	if cfg.Daemon.Enabled {
-		fmt.Println("- Background auto-launch: enabled")
-		fmt.Printf("- Daemon terminal app: %s\n", daemonTerminalAppLabel(normalizeDaemonTerminalAppForLaunch(cfg.Daemon.TerminalApp)))
-		fmt.Printf("- Daemon working directory: %s\n", config.ContractPath(resolveDaemonWorkingDirectory(cfg.Destination.Path)))
-	} else {
-		fmt.Println("- Background auto-launch: disabled")
-	}
-
-	if cfg.Daemon.StartAtLogin {
-		fmt.Println("- Start daemon at login: enabled")
-	} else {
-		fmt.Println("- Start daemon at login: disabled")
-	}
-
-	if cfg.Daemon.Enabled && !cfg.Daemon.StartAtLogin {
-		fmt.Println("Tip: start background mode now with `cardbot --daemon`.")
-	}
+	fmt.Println("- Destination:", cfg.Destination.Path)
+	fmt.Println("- Naming mode:", app.NamingModeLabel(cfg.Naming.Mode))
+	// Daemon options (auto-launch, start-at-login) are intentionally not shown here.
+	// They remain disabled by default. Revisit in a future release.
 	fmt.Println("Tip: run `cardbot --setup` anytime to change these settings.")
 }
 

@@ -28,7 +28,7 @@ func TestPromptDestinationReadlineIO_UsesProvidedReader(t *testing.T) {
 func TestSetupInput_SequentialAcrossDestinationAndPrompts(t *testing.T) {
 	t.Parallel()
 
-	in := bufio.NewReader(strings.NewReader("~/Pictures/Ingest\n2\ny\ny\n"))
+	in := bufio.NewReader(strings.NewReader("~/Pictures/Ingest\n2\n"))
 	var out bytes.Buffer
 
 	dest := promptDestinationReadlineIO("~/Pictures/CardBot", in, &out)
@@ -40,10 +40,6 @@ func TestSetupInput_SequentialAcrossDestinationAndPrompts(t *testing.T) {
 	if mode := prompter.PromptNamingMode(config.NamingOriginal); mode != config.NamingTimestamp {
 		t.Fatalf("PromptNamingMode = %q, want %q", mode, config.NamingTimestamp)
 	}
-	if enabled := prompter.PromptDaemonEnabled(false); !enabled {
-		t.Fatal("PromptDaemonEnabled = false, want true")
-	}
-	if startAtLogin := prompter.PromptDaemonStartAtLogin(false); !startAtLogin {
-		t.Fatal("PromptDaemonStartAtLogin = false, want true")
-	}
+	// Note: daemon prompts (auto-launch, start-at-login) have been removed from setup.
+	// Daemon options remain disabled by default.
 }

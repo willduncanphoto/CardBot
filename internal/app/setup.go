@@ -32,33 +32,21 @@ func (p *SetupPrompter) PromptNamingMode(defaultMode string) string {
 	return promptNamingModeReader(p.reader, p.out, defaultMode)
 }
 
-func (p *SetupPrompter) PromptDaemonEnabled(defaultEnabled bool) bool {
-	return promptDaemonEnabledReader(p.reader, p.out, defaultEnabled)
-}
-
-func (p *SetupPrompter) PromptDaemonStartAtLogin(defaultEnabled bool) bool {
-	return promptDaemonStartAtLoginReader(p.reader, p.out, defaultEnabled)
-}
-
 // RunSetup executes first-time/--setup prompts and persists config.
+// Daemon auto-launch and start-at-login are intentionally NOT prompted here
+// and remain disabled by default. Revisit these options in a future release.
 func RunSetup(
 	cfg *config.Config,
 	cfgPath string,
 	promptDestinationFn func(string) string,
 	promptNamingFn func(string) string,
-	promptDaemonEnabledFn func(bool) bool,
-	promptDaemonStartAtLoginFn func(bool) bool,
 ) error {
 	cfg.Destination.Path = config.ContractPath(promptDestinationFn(cfg.Destination.Path))
 	cfg.Naming.Mode = config.NormalizeNamingMode(promptNamingFn(cfg.Naming.Mode))
-	cfg.Daemon.Enabled = promptDaemonEnabledFn(cfg.Daemon.Enabled)
-	// Keep daemon setup intentionally simple: CardBot now uses the system
-	// default terminal app for auto-launch and does not prompt for terminal selection.
-	cfg.Daemon.StartAtLogin = promptDaemonStartAtLoginFn(cfg.Daemon.StartAtLogin)
+	// Daemon options remain disabled by default (no prompts)
+	cfg.Daemon.Enabled = false
+	cfg.Daemon.StartAtLogin = false
 	cfg.Daemon.TerminalApp = "Terminal"
-	if !cfg.Daemon.Enabled {
-		cfg.Daemon.StartAtLogin = false
-	}
 
 	if cfgPath == "" {
 		return nil
@@ -69,16 +57,6 @@ func RunSetup(
 // PromptNamingMode asks the user how filenames should be written on copy.
 func PromptNamingMode(defaultMode string) string {
 	return promptNamingModeIO(os.Stdin, os.Stdout, defaultMode)
-}
-
-// PromptDaemonEnabled asks whether CardBot should auto-launch from daemon mode.
-func PromptDaemonEnabled(defaultEnabled bool) bool {
-	return promptDaemonEnabledIO(os.Stdin, os.Stdout, defaultEnabled)
-}
-
-// PromptDaemonStartAtLogin asks whether daemon mode should auto-start at login.
-func PromptDaemonStartAtLogin(defaultEnabled bool) bool {
-	return promptDaemonStartAtLoginIO(os.Stdin, os.Stdout, defaultEnabled)
 }
 
 func promptNamingModeIO(in io.Reader, out io.Writer, defaultMode string) string {
@@ -115,112 +93,18 @@ func promptNamingModeReader(reader *bufio.Reader, out io.Writer, defaultMode str
 		}
 		line = strings.TrimSpace(line)
 		if line == "" {
-			fmt.Fprintf(out, "Naming set to: %s\n", namingModeLabel(mode))
+			fmt.Fprintf(out, "Naming set to: %s\n", NamingModeLabel(mode))
 			return mode
 		}
 
 		if chosen, ok := parseNamingChoice(line); ok {
-			fmt.Fprintf(out, "Naming set to: %s\n", namingModeLabel(chosen))
+			fmt.Fprintf(out, "Naming set to: %s\n", NamingModeLabel(chosen))
 			return chosen
 		}
 
 		fmt.Fprintln(out, "Please enter 1 or 2.")
 		fmt.Fprintln(out)
 	}
-}
-
-func promptDaemonEnabledIO(in io.Reader, out io.Writer, defaultEnabled bool) bool {
-	return promptDaemonEnabledReader(bufio.NewReader(in), out, defaultEnabled)
-}
-
-func promptDaemonEnabledReader(reader *bufio.Reader, out io.Writer, defaultEnabled bool) bool {
-	defaultChoice := "n"
-	if defaultEnabled {
-		defaultChoice = "y"
-	}
-
-	for {
-		fmt.Fprintln(out)
-		fmt.Fprintln(out, "Background Auto-Launch")
-		fmt.Fprintln(out, "────────────────────────────────────────")
-		fmt.Fprintln(out, "When daemon mode is running, launch CardBot")
-		fmt.Fprintln(out, "automatically when a memory card is connected? [y/n]")
-		fmt.Fprintf(out, "Choice [%s]: ", defaultChoice)
-
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Fprintln(out)
-			return defaultEnabled
-		}
-		line = strings.TrimSpace(line)
-		if line == "" {
-			fmt.Fprintf(out, "Background auto-launch: %s\n", enabledLabel(defaultEnabled))
-			return defaultEnabled
-		}
-
-		if enabled, ok := parseYesNo(line); ok {
-			fmt.Fprintf(out, "Background auto-launch: %s\n", enabledLabel(enabled))
-			return enabled
-		}
-
-		fmt.Fprintln(out, "Please enter y or n.")
-	}
-}
-
-func promptDaemonStartAtLoginIO(in io.Reader, out io.Writer, defaultEnabled bool) bool {
-	return promptDaemonStartAtLoginReader(bufio.NewReader(in), out, defaultEnabled)
-}
-
-func promptDaemonStartAtLoginReader(reader *bufio.Reader, out io.Writer, defaultEnabled bool) bool {
-	defaultChoice := "n"
-	if defaultEnabled {
-		defaultChoice = "y"
-	}
-
-	for {
-		fmt.Fprintln(out)
-		fmt.Fprintln(out, "Start at Login")
-		fmt.Fprintln(out, "────────────────────────────────────────")
-		fmt.Fprintln(out, "Start CardBot daemon automatically")
-		fmt.Fprintln(out, "when you log in? [y/n]")
-		fmt.Fprintf(out, "Choice [%s]: ", defaultChoice)
-
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Fprintln(out)
-			return defaultEnabled
-		}
-		line = strings.TrimSpace(line)
-		if line == "" {
-			fmt.Fprintf(out, "Start-at-login: %s\n", enabledLabel(defaultEnabled))
-			return defaultEnabled
-		}
-
-		if enabled, ok := parseYesNo(line); ok {
-			fmt.Fprintf(out, "Start-at-login: %s\n", enabledLabel(enabled))
-			return enabled
-		}
-
-		fmt.Fprintln(out, "Please enter y or n.")
-	}
-}
-
-func parseYesNo(input string) (bool, bool) {
-	switch strings.TrimSpace(strings.ToLower(input)) {
-	case "y", "yes":
-		return true, true
-	case "n", "no":
-		return false, true
-	default:
-		return false, false
-	}
-}
-
-func enabledLabel(enabled bool) string {
-	if enabled {
-		return "enabled"
-	}
-	return "disabled"
 }
 
 func parseNamingChoice(input string) (string, bool) {
@@ -241,7 +125,8 @@ func namingChoiceDefault(mode string) string {
 	return "1"
 }
 
-func namingModeLabel(mode string) string {
+// NamingModeLabel returns a human-readable label for a naming mode.
+func NamingModeLabel(mode string) string {
 	if config.NormalizeNamingMode(mode) == config.NamingTimestamp {
 		return "Timestamp + sequence"
 	}
