@@ -28,11 +28,11 @@ func Launch(opts Options) error {
 
 func launchWith(opts Options, run commandRunner) error {
 	binary := stripMatchingQuotes(strings.TrimSpace(opts.CardBotBinary))
-	mountPath := stripMatchingQuotes(strings.TrimSpace(opts.MountPath))
+	mountPath := stripMatchingQuotes(opts.MountPath)
 	if binary == "" {
 		return fmt.Errorf("cardbot binary path is required")
 	}
-	if mountPath == "" {
+	if strings.TrimSpace(mountPath) == "" {
 		return fmt.Errorf("mount path is required")
 	}
 
@@ -139,7 +139,7 @@ func normalizeGhosttyLaunchArgs(args []string, binary, mountPath string) []strin
 
 	out := make([]string, 0, len(args)+1)
 	for _, arg := range args {
-		out = append(out, stripMatchingQuotes(strings.TrimSpace(arg)))
+		out = append(out, stripMatchingQuotes(arg))
 	}
 
 	for i := 0; i < len(out)-1; i++ {
@@ -172,7 +172,6 @@ func normalizeGhosttyLaunchArgs(args []string, binary, mountPath string) []strin
 }
 
 func stripMatchingQuotes(s string) string {
-	s = strings.TrimSpace(s)
 	if len(s) < 2 {
 		return s
 	}
@@ -180,14 +179,14 @@ func stripMatchingQuotes(s string) string {
 	if strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'") {
 		inner := s[1 : len(s)-1]
 		if !strings.Contains(inner, "'") {
-			return strings.TrimSpace(inner)
+			return inner
 		}
 		return s
 	}
 	if strings.HasPrefix(s, "\"") && strings.HasSuffix(s, "\"") {
 		inner := s[1 : len(s)-1]
 		if !strings.Contains(inner, "\"") {
-			return strings.TrimSpace(inner)
+			return inner
 		}
 		return s
 	}

@@ -6,8 +6,7 @@ import (
 )
 
 func normalizeCardPath(path string) string {
-	path = strings.TrimSpace(path)
-	if path == "" {
+	if path == "" || strings.TrimSpace(path) == "" {
 		return ""
 	}
 	return filepath.Clean(path)

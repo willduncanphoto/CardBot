@@ -112,11 +112,14 @@ func TestIsTracked_NormalizesPath(t *testing.T) {
 	t.Parallel()
 
 	a := &App{
-		currentCard: &detect.Card{Path: "/Volumes/NIKON Z 9"},
+		currentCard: &detect.Card{Path: "/Volumes/NIKON Z 9  "},
 	}
 
-	if !a.isTracked("/Volumes/NIKON Z 9/") {
+	if !a.isTracked("/Volumes/NIKON Z 9  /") {
 		t.Fatal("expected trailing-slash variant to be tracked")
+	}
+	if a.isTracked("/Volumes/NIKON Z 9") {
+		t.Fatal("did not expect trimmed path variant to be tracked")
 	}
 }
 

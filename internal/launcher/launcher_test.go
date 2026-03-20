@@ -106,6 +106,27 @@ func TestLaunchWith_GhosttyDefault_UsesOpenWithE(t *testing.T) {
 	}
 }
 
+func TestLaunchWith_GhosttyDefault_PreservesTrailingSpacesInMountPath(t *testing.T) {
+	var got recordedCommand
+	run := func(name string, args ...string) error {
+		got = recordedCommand{name: name, args: append([]string{}, args...)}
+		return nil
+	}
+
+	mount := "/Volumes/NIKON Z 9  "
+	err := launchWith(Options{
+		TerminalApp:   "Ghostty",
+		CardBotBinary: "/usr/local/bin/cardbot",
+		MountPath:     mount,
+	}, run)
+	if err != nil {
+		t.Fatalf("launchWith error: %v", err)
+	}
+	if got.args[5] != mount {
+		t.Fatalf("mount arg = %q, want %q", got.args[5], mount)
+	}
+}
+
 func TestLaunchWith_CustomLaunchArgs_TemplatesResolved(t *testing.T) {
 	var got recordedCommand
 	run := func(name string, args ...string) error {
