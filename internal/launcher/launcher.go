@@ -101,12 +101,7 @@ func launchWith(opts Options, run commandRunner) error {
 			// Set Ghostty's working directory explicitly so new windows don't land at root.
 			args = append(args, "--working-directory="+wd)
 		}
-		// Use a shell wrapper so the mount path is embedded inside the command
-		// string rather than passed as a bare argv token. This avoids Ghostty
-		// opening the mount path as a separate tab/path when reusing an existing
-		// app instance.
-		script := fmt.Sprintf("exec %s %s", shQuote(binary), shQuote(mountPath))
-		args = append(args, "-e", "/bin/sh", "-lc", script)
+		args = append(args, "-e", binary, mountPath)
 		return runLogged("open", args...)
 	}
 
