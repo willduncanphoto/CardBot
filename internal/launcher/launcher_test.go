@@ -92,17 +92,20 @@ func TestLaunchWith_GhosttyDefault_UsesOpenWithE(t *testing.T) {
 	if got.name != "open" {
 		t.Fatalf("command name = %q, want %q", got.name, "open")
 	}
-	if len(got.args) != 7 {
-		t.Fatalf("args = %v, want 7 args", got.args)
+	if len(got.args) != 8 {
+		t.Fatalf("args = %v, want 8 args", got.args)
 	}
-	if got.args[0] != "-na" || got.args[1] != "Ghostty" {
-		t.Fatalf("args = %v, want '-na Ghostty ...'", got.args)
+	if got.args[0] != "-a" || got.args[1] != "Ghostty" {
+		t.Fatalf("args = %v, want '-a Ghostty ...'", got.args)
 	}
 	if got.args[2] != "--args" || !strings.HasPrefix(got.args[3], "--working-directory=") || got.args[4] != "-e" {
 		t.Fatalf("args = %v, want '--args --working-directory=<home> -e ...'", got.args)
 	}
-	if got.args[5] != "/usr/local/bin/cardbot" || got.args[6] != "/Volumes/CARD" {
-		t.Fatalf("args = %v, want binary + mount path passed separately", got.args)
+	if got.args[5] != "/bin/sh" || got.args[6] != "-lc" {
+		t.Fatalf("args = %v, want shell wrapper '/bin/sh -lc'", got.args)
+	}
+	if !strings.Contains(got.args[7], "exec '/usr/local/bin/cardbot' '/Volumes/CARD'") {
+		t.Fatalf("args = %v, want embedded cardbot command script", got.args)
 	}
 }
 
@@ -122,8 +125,8 @@ func TestLaunchWith_GhosttyDefault_PreservesTrailingSpacesInMountPath(t *testing
 	if err != nil {
 		t.Fatalf("launchWith error: %v", err)
 	}
-	if got.args[6] != mount {
-		t.Fatalf("mount arg = %q, want %q", got.args[6], mount)
+	if !strings.Contains(got.args[7], shQuote(mount)) {
+		t.Fatalf("script arg = %q, expected quoted mount path %q", got.args[7], shQuote(mount))
 	}
 }
 
@@ -173,8 +176,8 @@ func TestLaunchWith_CustomLaunchArgs_TemplatesResolved(t *testing.T) {
 	if len(got.args) != 7 {
 		t.Fatalf("args = %v, want 7 args", got.args)
 	}
-	if got.args[0] != "-na" || got.args[1] != "Ghostty" {
-		t.Fatalf("args = %v, want '-na Ghostty ...'", got.args)
+	if got.args[0] != "-a" || got.args[1] != "Ghostty" {
+		t.Fatalf("args = %v, want '-a Ghostty ...'", got.args)
 	}
 	if !strings.HasPrefix(got.args[3], "--working-directory=") || got.args[4] != "-e" || got.args[5] != "/opt/cardbot" || got.args[6] != "/Volumes/NIKON Z 9" {
 		t.Fatalf("args = %v, want '--working-directory=<home> -e /opt/cardbot /Volumes/NIKON Z 9'", got.args)
@@ -254,8 +257,11 @@ func TestLaunchWith_StripsMatchingQuotesFromBinaryAndMount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("launchWith error: %v", err)
 	}
-	if got.args[5] != "/usr/local/bin/cardbot" || got.args[6] != "/Volumes/NIKON Z 9" {
-		t.Fatalf("args = %v, expected normalized binary + mount path", got.args)
+	if got.args[5] != "/bin/sh" || got.args[6] != "-lc" {
+		t.Fatalf("args = %v, expected shell wrapper", got.args)
+	}
+	if !strings.Contains(got.args[7], "exec '/usr/local/bin/cardbot' '/Volumes/NIKON Z 9'") {
+		t.Fatalf("args = %v, expected normalized binary + mount path in script", got.args)
 	}
 }
 

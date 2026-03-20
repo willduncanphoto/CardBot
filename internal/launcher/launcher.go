@@ -64,13 +64,8 @@ func launchWith(opts Options, run commandRunner) error {
 		if isSystemDefaultTerminal(app) {
 			return runLogged("open", resolved...)
 		}
-		openAppFlag := "-a"
-		openArgs := []string{openAppFlag, app, "--args"}
+		openArgs := []string{"-a", app, "--args"}
 		if isGhosttyApp(app) {
-			// Ghostty on macOS requires -n to reliably open a fresh terminal window
-			// when Ghostty is already running.
-			openAppFlag = "-na"
-			openArgs[0] = openAppFlag
 			if wd := ghosttyWorkingDirectory(opts.WorkingDirectory); wd != "" {
 				openArgs = append(openArgs, "--working-directory="+wd)
 			}
@@ -100,17 +95,18 @@ func launchWith(opts Options, run commandRunner) error {
 
 	if isGhosttyApp(app) {
 		debugf("launcher branch: Ghostty")
-		// Ghostty expects command and argv as separate arguments after -e.
-		// Passing a single shell-quoted string causes it to look for a binary
-		// whose name includes spaces (e.g. "/usr/local/bin/cardbot /Volumes/...").
-		// Use -na to force a fresh window when Ghostty is already running.
-		args := []string{"-na", app, "--args"}
+		args := []string{"-a", app, "--args"}
 		if wd := ghosttyWorkingDirectory(opts.WorkingDirectory); wd != "" {
 			// Daemon processes launched by launchd often inherit cwd="/".
 			// Set Ghostty's working directory explicitly so new windows don't land at root.
 			args = append(args, "--working-directory="+wd)
 		}
-		args = append(args, "-e", binary, mountPath)
+		// Use a shell wrapper so the mount path is embedded inside the command
+		// string rather than passed as a bare argv token. This avoids Ghostty
+		// opening the mount path as a separate tab/path when reusing an existing
+		// app instance.
+		script := fmt.Sprintf("exec %s %s", shQuote(binary), shQuote(mountPath))
+		args = append(args, "-e", "/bin/sh", "-lc", script)
 		return runLogged("open", args...)
 	}
 

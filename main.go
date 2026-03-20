@@ -306,22 +306,23 @@ func runDaemon(cfg *config.Config, logger *cblog.Logger) {
 	if debugEnabled {
 		fmt.Printf("[%s] Daemon debug logging: enabled\n", time.Now().Format("2006-01-02T15:04:05"))
 	}
-	debugf("daemon startup: binary=%q terminal=%q working_dir=%q custom_launch_args=%d", cardbotBinary, appName, workingDir, len(cfg.Daemon.LaunchArgs))
+	processName := filepath.Base(cardbotBinary)
+	debugf("daemon startup: binary=%q process=%q terminal=%q working_dir=%q custom_launch_args=%d", cardbotBinary, processName, appName, workingDir, len(cfg.Daemon.LaunchArgs))
 
 	d := daemon.New(daemon.Config{
 		OnCardInserted: func(path string) {
 			debugf("card insert callback: mount=%q", path)
 
-			// Check if another daemon instance is already running using PID file.
-			// Skip self-check since the PID file contains our own PID during startup.
-			hasOtherDaemon, checkErr := daemonHasRunningInstance(os.Getpid())
+			// Strict single-instance guard: if any other cardbot process is running,
+			// do not auto-launch a second interactive instance.
+			hasOther, checkErr := instance.HasOtherProcess(processName, os.Getpid())
 			if checkErr != nil {
-				fmt.Fprintf(os.Stderr, "[%s] Warning: daemon instance check failed (%v)\n", time.Now().Format("2006-01-02T15:04:05"), checkErr)
-				logf("Daemon instance check failed: %v", checkErr)
-			} else if hasOtherDaemon {
-				debugf("daemon instance guard blocked launch for %q", path)
-				fmt.Printf("[%s] Another daemon is already running — skipping auto-launch\n", time.Now().Format("2006-01-02T15:04:05"))
-				logf("Auto-launch skipped for %s: another daemon is running", path)
+				fmt.Fprintf(os.Stderr, "[%s] Warning: single-instance check failed (%v)\n", time.Now().Format("2006-01-02T15:04:05"), checkErr)
+				logf("Single-instance check failed: %v", checkErr)
+			} else if hasOther {
+				debugf("single-instance guard blocked launch for %q", path)
+				fmt.Printf("[%s] CardBot already running in another process — skipping auto-launch\n", time.Now().Format("2006-01-02T15:04:05"))
+				logf("Auto-launch skipped for %s: another cardbot process is running", path)
 				return
 			}
 
