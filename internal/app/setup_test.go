@@ -23,7 +23,6 @@ func TestRunSetup_WritesNamingModeToConfig(t *testing.T) {
 		func(string) string { return config.NamingTimestamp },
 		func(bool) bool { return true },
 		func(bool) bool { return true },
-		func(string) string { return "Ghostty" },
 	)
 	if err != nil {
 		t.Fatalf("RunSetup error: %v", err)
@@ -48,8 +47,8 @@ func TestRunSetup_WritesNamingModeToConfig(t *testing.T) {
 	if !loaded.Daemon.StartAtLogin {
 		t.Fatalf("Daemon.StartAtLogin = %v, want true", loaded.Daemon.StartAtLogin)
 	}
-	if loaded.Daemon.TerminalApp != "Ghostty" {
-		t.Fatalf("Daemon.TerminalApp = %q, want %q", loaded.Daemon.TerminalApp, "Ghostty")
+	if loaded.Daemon.TerminalApp != "Terminal" {
+		t.Fatalf("Daemon.TerminalApp = %q, want %q", loaded.Daemon.TerminalApp, "Terminal")
 	}
 }
 
@@ -66,7 +65,6 @@ func TestRunSetup_NormalizesInvalidNamingMode(t *testing.T) {
 		func(string) string { return "banana" },
 		func(bool) bool { return false },
 		func(bool) bool { return true },
-		func(string) string { return "Ghostty" },
 	)
 	if err != nil {
 		t.Fatalf("RunSetup error: %v", err)
@@ -87,13 +85,12 @@ func TestRunSetup_NormalizesInvalidNamingMode(t *testing.T) {
 	}
 }
 
-func TestRunSetup_DaemonDisabled_StillAsksAllDaemonQuestions(t *testing.T) {
+func TestRunSetup_DaemonDisabled_SkipsTerminalAppPromptAndForcesDefault(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.Defaults()
 	cfgPath := filepath.Join(t.TempDir(), "config.json")
 	askedStartAtLogin := false
-	askedTerminalApp := false
 
 	err := RunSetup(
 		cfg,
@@ -105,19 +102,12 @@ func TestRunSetup_DaemonDisabled_StillAsksAllDaemonQuestions(t *testing.T) {
 			askedStartAtLogin = true
 			return true
 		},
-		func(string) string {
-			askedTerminalApp = true
-			return "Ghostty"
-		},
 	)
 	if err != nil {
 		t.Fatalf("RunSetup error: %v", err)
 	}
 	if !askedStartAtLogin {
 		t.Fatal("expected start-at-login prompt to be asked")
-	}
-	if !askedTerminalApp {
-		t.Fatal("expected terminal app prompt to be asked")
 	}
 
 	loaded, _, err := config.Load(cfgPath)
@@ -127,8 +117,8 @@ func TestRunSetup_DaemonDisabled_StillAsksAllDaemonQuestions(t *testing.T) {
 	if loaded.Daemon.StartAtLogin {
 		t.Fatal("Daemon.StartAtLogin should be forced false when daemon is disabled")
 	}
-	if loaded.Daemon.TerminalApp != "Ghostty" {
-		t.Fatalf("Daemon.TerminalApp = %q, want %q", loaded.Daemon.TerminalApp, "Ghostty")
+	if loaded.Daemon.TerminalApp != "Terminal" {
+		t.Fatalf("Daemon.TerminalApp = %q, want %q", loaded.Daemon.TerminalApp, "Terminal")
 	}
 }
 
@@ -193,86 +183,6 @@ func TestParseYesNo(t *testing.T) {
 		})
 	}
 }
-
-func TestParseDaemonTerminalChoice(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		in     string
-		want   string
-		wantOK bool
-	}{
-		{"1", "Default", true},
-		{"default", "Default", true},
-		{"2", "Terminal", true},
-		{"terminal", "Terminal", true},
-		{"3", "Ghostty", true},
-		{"ghostty", "Ghostty", true},
-		{"4", "", true},
-		{"custom", "", true},
-		{"wat", "", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("input_%q", tt.in), func(t *testing.T) {
-			got, ok := parseDaemonTerminalChoice(tt.in)
-			if ok != tt.wantOK {
-				t.Errorf("parseDaemonTerminalChoice(%q) ok = %v, want %v", tt.in, ok, tt.wantOK)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("parseDaemonTerminalChoice(%q) = %q, want %q", tt.in, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestPromptDaemonTerminalAppIO_Default(t *testing.T) {
-	t.Parallel()
-	in := strings.NewReader("\n")
-	var out bytes.Buffer
-
-	app := promptDaemonTerminalAppIO(in, &out, "Terminal")
-	if app != "Terminal" {
-		t.Fatalf("app = %q, want %q", app, "Terminal")
-	}
-	if !strings.Contains(out.String(), "Choice [2]:") {
-		t.Fatalf("expected default [2] prompt, got:\n%s", out.String())
-	}
-}
-
-func TestPromptDaemonTerminalAppIO_ChooseDefault(t *testing.T) {
-	t.Parallel()
-	in := strings.NewReader("1\n")
-	var out bytes.Buffer
-
-	app := promptDaemonTerminalAppIO(in, &out, "Terminal")
-	if app != "Default" {
-		t.Fatalf("app = %q, want %q", app, "Default")
-	}
-}
-
-func TestPromptDaemonTerminalAppIO_ChooseGhostty(t *testing.T) {
-	t.Parallel()
-	in := strings.NewReader("3\n")
-	var out bytes.Buffer
-
-	app := promptDaemonTerminalAppIO(in, &out, "Terminal")
-	if app != "Ghostty" {
-		t.Fatalf("app = %q, want %q", app, "Ghostty")
-	}
-}
-
-func TestPromptDaemonTerminalAppIO_Custom(t *testing.T) {
-	t.Parallel()
-	in := strings.NewReader("4\nWezTerm\n")
-	var out bytes.Buffer
-
-	app := promptDaemonTerminalAppIO(in, &out, "Terminal")
-	if app != "WezTerm" {
-		t.Fatalf("app = %q, want %q", app, "WezTerm")
-	}
-}
-
 
 func TestPromptDaemonEnabledIO_DefaultFalse(t *testing.T) {
 	t.Parallel()
@@ -437,7 +347,7 @@ func TestPromptNamingModeIO_EOF(t *testing.T) {
 func TestSetupPrompter_SequentialPromptsShareInputStream(t *testing.T) {
 	t.Parallel()
 
-	in := strings.NewReader("2\ny\ny\n3\n")
+	in := strings.NewReader("2\ny\ny\n")
 	var out bytes.Buffer
 	p := NewSetupPrompter(in, &out)
 
@@ -449,9 +359,6 @@ func TestSetupPrompter_SequentialPromptsShareInputStream(t *testing.T) {
 	}
 	if startAtLogin := p.PromptDaemonStartAtLogin(false); !startAtLogin {
 		t.Fatal("PromptDaemonStartAtLogin = false, want true")
-	}
-	if appName := p.PromptDaemonTerminalApp("Terminal"); appName != "Ghostty" {
-		t.Fatalf("PromptDaemonTerminalApp = %q, want %q", appName, "Ghostty")
 	}
 }
 

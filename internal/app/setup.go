@@ -40,10 +40,6 @@ func (p *SetupPrompter) PromptDaemonStartAtLogin(defaultEnabled bool) bool {
 	return promptDaemonStartAtLoginReader(p.reader, p.out, defaultEnabled)
 }
 
-func (p *SetupPrompter) PromptDaemonTerminalApp(defaultApp string) string {
-	return promptDaemonTerminalAppReader(p.reader, p.out, defaultApp)
-}
-
 // RunSetup executes first-time/--setup prompts and persists config.
 func RunSetup(
 	cfg *config.Config,
@@ -52,14 +48,14 @@ func RunSetup(
 	promptNamingFn func(string) string,
 	promptDaemonEnabledFn func(bool) bool,
 	promptDaemonStartAtLoginFn func(bool) bool,
-	promptDaemonTerminalAppFn func(string) string,
 ) error {
 	cfg.Destination.Path = config.ContractPath(promptDestinationFn(cfg.Destination.Path))
 	cfg.Naming.Mode = config.NormalizeNamingMode(promptNamingFn(cfg.Naming.Mode))
 	cfg.Daemon.Enabled = promptDaemonEnabledFn(cfg.Daemon.Enabled)
-	// Always ask every daemon question during setup.
+	// Keep daemon setup intentionally simple: CardBot now uses the system
+	// default terminal app for auto-launch and does not prompt for terminal selection.
 	cfg.Daemon.StartAtLogin = promptDaemonStartAtLoginFn(cfg.Daemon.StartAtLogin)
-	cfg.Daemon.TerminalApp = normalizeDaemonTerminalApp(promptDaemonTerminalAppFn(cfg.Daemon.TerminalApp))
+	cfg.Daemon.TerminalApp = "Terminal"
 	if !cfg.Daemon.Enabled {
 		cfg.Daemon.StartAtLogin = false
 	}
@@ -84,12 +80,6 @@ func PromptDaemonEnabled(defaultEnabled bool) bool {
 func PromptDaemonStartAtLogin(defaultEnabled bool) bool {
 	return promptDaemonStartAtLoginIO(os.Stdin, os.Stdout, defaultEnabled)
 }
-
-// PromptDaemonTerminalApp asks which terminal app daemon mode should launch.
-func PromptDaemonTerminalApp(defaultApp string) string {
-	return promptDaemonTerminalAppIO(os.Stdin, os.Stdout, defaultApp)
-}
-
 
 func promptNamingModeIO(in io.Reader, out io.Writer, defaultMode string) string {
 	return promptNamingModeReader(bufio.NewReader(in), out, defaultMode)
@@ -213,110 +203,6 @@ func promptDaemonStartAtLoginReader(reader *bufio.Reader, out io.Writer, default
 
 		fmt.Fprintln(out, "Please enter y or n.")
 	}
-}
-
-func promptDaemonTerminalAppIO(in io.Reader, out io.Writer, defaultApp string) string {
-	return promptDaemonTerminalAppReader(bufio.NewReader(in), out, defaultApp)
-}
-
-func promptDaemonTerminalAppReader(reader *bufio.Reader, out io.Writer, defaultApp string) string {
-	app := normalizeDaemonTerminalApp(defaultApp)
-
-	for {
-		fmt.Fprintln(out)
-		fmt.Fprintln(out, "Daemon Terminal App")
-		fmt.Fprintln(out, "────────────────────────────────────────")
-		fmt.Fprintln(out, "Choose which terminal app to open when")
-		fmt.Fprintln(out, "a card is detected in daemon mode:")
-		fmt.Fprintln(out, "[1] Use macOS default terminal app")
-		fmt.Fprintln(out, "[2] Terminal")
-		fmt.Fprintln(out, "[3] Ghostty")
-		fmt.Fprintln(out, "[4] Custom app name")
-		fmt.Fprintln(out)
-		fmt.Fprintf(out, "Choice [%s]: ", daemonTerminalDefaultChoice(app))
-
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Fprintln(out)
-			fmt.Fprintf(out, "Daemon terminal app: %s\n", app)
-			return app
-		}
-		line = strings.TrimSpace(line)
-		if line == "" {
-			fmt.Fprintf(out, "Daemon terminal app: %s\n", app)
-			return app
-		}
-
-		chosen, ok := parseDaemonTerminalChoice(line)
-		if !ok {
-			fmt.Fprintln(out, "Please enter 1, 2, 3, or 4.")
-			continue
-		}
-		if chosen == "" {
-			fmt.Fprintf(out, "App name: ")
-			customLine, customErr := reader.ReadString('\n')
-			if customErr != nil {
-				fmt.Fprintln(out)
-				fmt.Fprintf(out, "Daemon terminal app: %s\n", app)
-				return app
-			}
-			custom := strings.TrimSpace(customLine)
-			if custom == "" {
-				fmt.Fprintln(out, "Please enter a non-empty app name.")
-				continue
-			}
-			chosen = custom
-		}
-
-		chosen = normalizeDaemonTerminalApp(chosen)
-		fmt.Fprintf(out, "Daemon terminal app: %s\n", chosen)
-		return chosen
-	}
-}
-
-func parseDaemonTerminalChoice(input string) (string, bool) {
-	switch strings.TrimSpace(strings.ToLower(input)) {
-	case "1", "default", "system default", "macos default":
-		return "Default", true
-	case "2", "terminal", "terminal.app":
-		return "Terminal", true
-	case "3", "ghostty":
-		return "Ghostty", true
-	case "4", "custom":
-		return "", true
-	default:
-		return "", false
-	}
-}
-
-func daemonTerminalDefaultChoice(app string) string {
-	switch strings.ToLower(strings.TrimSpace(app)) {
-	case "default", "system default", "macos default":
-		return "1"
-	case "terminal", "terminal.app":
-		return "2"
-	case "ghostty":
-		return "3"
-	default:
-		return "4"
-	}
-}
-
-func normalizeDaemonTerminalApp(app string) string {
-	app = strings.TrimSpace(app)
-	if app == "" {
-		return "Terminal"
-	}
-	if strings.EqualFold(app, "default") || strings.EqualFold(app, "system default") || strings.EqualFold(app, "macos default") {
-		return "Default"
-	}
-	if strings.EqualFold(app, "terminal.app") {
-		return "Terminal"
-	}
-	if strings.EqualFold(app, "ghostty") {
-		return "Ghostty"
-	}
-	return app
 }
 
 func parseYesNo(input string) (bool, bool) {

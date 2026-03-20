@@ -109,7 +109,7 @@ Verbose debug lines include (examples):
 - daemon startup config summary
 - card insert callback mount path
 - single-instance guard block reason
-- launcher branch selection (Default/Terminal/Ghostty/custom)
+- launcher branch selection (current daemon path uses macOS default terminal)
 - exact executed command arguments
 - generated `.command` script path (system-default terminal branch)
 

@@ -113,7 +113,7 @@ func main() {
 		promptDestinationFn := func(defaultPath string) string {
 			return promptDestinationWithIO(defaultPath, setupReader, os.Stdout)
 		}
-		if saveErr := app.RunSetup(cfg, cfgPath, promptDestinationFn, setupPrompter.PromptNamingMode, setupPrompter.PromptDaemonEnabled, setupPrompter.PromptDaemonStartAtLogin, setupPrompter.PromptDaemonTerminalApp); saveErr != nil {
+		if saveErr := app.RunSetup(cfg, cfgPath, promptDestinationFn, setupPrompter.PromptNamingMode, setupPrompter.PromptDaemonEnabled, setupPrompter.PromptDaemonStartAtLogin); saveErr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not save config: %s\n", app.FriendlyErr(saveErr))
 		}
 		syncDaemonAutoStartFromConfig(cfg)
@@ -153,7 +153,7 @@ func main() {
 		}
 		targetPath = string(decoded)
 	}
-	if args := flag.Args(); len(args) > 0 {
+	if args := flag.Args(); len(args) > 0 && strings.TrimSpace(targetPath) == "" {
 		targetPath = args[0]
 	}
 
@@ -384,21 +384,10 @@ func runDaemon(cfg *config.Config, logger *cblog.Logger) {
 	}
 }
 
-func normalizeDaemonTerminalAppForLaunch(app string) string {
-	app = strings.TrimSpace(app)
-	if app == "" {
-		return "Default"
-	}
-	if strings.EqualFold(app, "terminal.app") {
-		return "Terminal"
-	}
-	if strings.EqualFold(app, "default") || strings.EqualFold(app, "system default") || strings.EqualFold(app, "macos default") {
-		return "Default"
-	}
-	if strings.EqualFold(app, "ghostty") {
-		return "Ghostty"
-	}
-	return app
+func normalizeDaemonTerminalAppForLaunch(_ string) string {
+	// CardBot daemon launches use Terminal.app via AppleScript.
+	// This avoids the ugly .command script header that "Default" produces.
+	return "Terminal"
 }
 
 func daemonTerminalAppLabel(app string) string {
@@ -690,10 +679,10 @@ type daemonStatusSIGuardReport struct {
 }
 
 type daemonStatusDIReport struct {
-	PIDPath       string `json:"pid_path,omitempty"`
-	Running       bool   `json:"running"`
-	RunningPID    int    `json:"running_pid,omitempty"`
-	CheckError    string `json:"check_error,omitempty"`
+	PIDPath    string `json:"pid_path,omitempty"`
+	Running    bool   `json:"running"`
+	RunningPID int    `json:"running_pid,omitempty"`
+	CheckError string `json:"check_error,omitempty"`
 }
 
 type daemonStatusLAReport struct {
@@ -1030,11 +1019,8 @@ func syncDaemonAutoStartFromConfig(cfg *config.Config) {
 	}
 
 	if cfg.Daemon.Enabled && cfg.Daemon.StartAtLogin {
-		if st, err := launchagent.CurrentStatus(); err == nil && st.Installed && st.Loaded {
-			fmt.Printf("[%s] Start-at-login already enabled\n", app.Ts())
-			return
-		}
-
+		// Always (re)install from setup to keep LaunchAgent ProgramArguments
+		// aligned with the current cardbot binary path and avoid stale wrappers.
 		exe, err := os.Executable()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not determine executable path for launch agent install: %v\n", err)

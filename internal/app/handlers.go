@@ -432,9 +432,9 @@ func (a *App) launchTargetPath(path string) {
 	}
 	a.stopScanning()
 
-	card := &detect.Card{
-		Path: path,
-		Name: filepath.Base(path),
+	card := detect.CardFromPath(path)
+	if card == nil {
+		card = &detect.Card{Path: path, Name: filepath.Base(path), Brand: "Unknown"}
 	}
 
 	a.mu.Lock()

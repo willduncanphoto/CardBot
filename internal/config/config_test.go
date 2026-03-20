@@ -325,7 +325,6 @@ func TestLoad_DaemonTerminalAppDefaultedWhenEmpty(t *testing.T) {
 	}
 }
 
-
 func TestNormalizeNamingMode(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

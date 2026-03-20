@@ -28,7 +28,7 @@ func TestPromptDestinationReadlineIO_UsesProvidedReader(t *testing.T) {
 func TestSetupInput_SequentialAcrossDestinationAndPrompts(t *testing.T) {
 	t.Parallel()
 
-	in := bufio.NewReader(strings.NewReader("~/Pictures/Ingest\n2\ny\ny\n3\n"))
+	in := bufio.NewReader(strings.NewReader("~/Pictures/Ingest\n2\ny\ny\n"))
 	var out bytes.Buffer
 
 	dest := promptDestinationReadlineIO("~/Pictures/CardBot", in, &out)
@@ -45,8 +45,5 @@ func TestSetupInput_SequentialAcrossDestinationAndPrompts(t *testing.T) {
 	}
 	if startAtLogin := prompter.PromptDaemonStartAtLogin(false); !startAtLogin {
 		t.Fatal("PromptDaemonStartAtLogin = false, want true")
-	}
-	if appName := prompter.PromptDaemonTerminalApp("Terminal"); appName != "Ghostty" {
-		t.Fatalf("PromptDaemonTerminalApp = %q, want %q", appName, "Ghostty")
 	}
 }

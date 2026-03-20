@@ -88,10 +88,15 @@ func launchWith(opts Options, run commandRunner) error {
 	if isTerminalApp(app) {
 		debugf("launcher branch: Terminal AppleScript")
 		cmd := fmt.Sprintf("%s %s", shQuote(binary), shQuote(mountPath))
-		return runLogged("osascript",
-			"-e", fmt.Sprintf(`tell application "Terminal" to do script %q`, cmd),
-			"-e", `activate application "Terminal"`,
-		)
+		// Activate first so a cold-launched Terminal creates one window,
+		// then run the command in that window instead of spawning a second.
+		script := fmt.Sprintf(`
+tell application "Terminal"
+	activate
+	delay 0.5
+	do script %q in front window
+end tell`, cmd)
+		return runLogged("osascript", "-e", script)
 	}
 
 	if isGhosttyApp(app) {

@@ -126,8 +126,8 @@ For full daemon debugging details and expected debug output, see **[DEBUG.md](DE
 
 ## Daemon behavior
 
-- Launches your configured terminal app on card insert.
-- Terminal app choices in setup: **Default (macOS default terminal app)**, Terminal, Ghostty, or custom.
+- Launches **Terminal.app** via AppleScript on card insert.
+- Terminal selection has been simplified in setup (no app-choice prompt).
 - Single-instance guard prevents duplicate foreground launches.
 - Duplicate-event cooldown suppresses rapid repeat mount events.
 
@@ -154,7 +154,7 @@ Important daemon fields:
 }
 ```
 
-`terminal_app` can be `Default`, `Terminal`, `Ghostty`, or a custom app name.
+`terminal_app` is retained for backward compatibility but daemon launches currently use Terminal.app via AppleScript.
 Set `daemon.debug` to `true` to enable verbose daemon/launcher debug logging.
 
 ## Roadmap

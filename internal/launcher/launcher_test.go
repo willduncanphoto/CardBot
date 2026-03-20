@@ -69,8 +69,14 @@ func TestLaunchWith_TerminalApp_UsesAppleScript(t *testing.T) {
 		t.Fatalf("command name = %q, want %q", got.name, "osascript")
 	}
 	joined := strings.Join(got.args, " ")
-	if !strings.Contains(joined, "tell application \"Terminal\" to do script") {
-		t.Fatalf("args missing Terminal script command: %v", got.args)
+	if !strings.Contains(joined, `tell application "Terminal"`) {
+		t.Fatalf("args missing Terminal tell block: %v", got.args)
+	}
+	if !strings.Contains(joined, "do script") {
+		t.Fatalf("args missing do script command: %v", got.args)
+	}
+	if !strings.Contains(joined, "in front window") {
+		t.Fatalf("args missing 'in front window': %v", got.args)
 	}
 }
 
