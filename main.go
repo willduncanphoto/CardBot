@@ -26,7 +26,7 @@ import (
 	"github.com/illwill/cardbot/internal/pick"
 )
 
-const version = "0.5.2"
+const version = "0.5.3"
 
 func main() {
 	if len(os.Args) > 1 {
@@ -163,7 +163,7 @@ func main() {
 		if exeErr == nil {
 			processName = filepath.Base(exePath)
 		}
-		hasOther, checkErr := instance.HasOtherProcess(processName, os.Getpid())
+		hasOther, checkErr := instance.HasOtherInteractiveProcess(processName, os.Getpid())
 		if checkErr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not verify running instances: %v\n", checkErr)
 		} else if hasOther {
