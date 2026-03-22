@@ -5,44 +5,44 @@
 Latest release:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/scripts/install.sh | sh
 ```
 
 Specific version:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/install.sh | sh -s -- --version <version>
+curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/scripts/install.sh | sh -s -- --version <version>
 # example: --version v0.5.2
 ```
 
 Install to custom path without sudo:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/install.sh | sh -s -- --install-dir "$HOME/.local/bin" --no-sudo
+curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/scripts/install.sh | sh -s -- --install-dir "$HOME/.local/bin" --no-sudo
 ```
 
 Installer options:
 
 ```bash
-sh install.sh --help
+sh scripts/install.sh --help
 ```
 
 Uninstall:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/uninstall.sh | sh
+curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/scripts/uninstall.sh | sh
 ```
 
 Uninstall and purge config/log files:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/uninstall.sh | sh -s -- --purge
+curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/scripts/uninstall.sh | sh -s -- --purge
 ```
 
 Uninstaller options:
 
 ```bash
-sh uninstall.sh --help
+sh scripts/uninstall.sh --help
 ```
 
 ---
@@ -162,7 +162,23 @@ cardbot daemon-debug on
 cardbot daemon-debug off
 ```
 
-For full daemon debugging details and expected debug output, see **[DEBUG.md](DEBUG.md)**.
+After changing debug mode, restart a running daemon process so the new setting is applied.
+
+### Expected debug output
+
+When `daemon.debug` is `true`:
+
+- Interactive startup (`cardbot`) prints: `Daemon debug: enabled`
+- Daemon startup (`cardbot --daemon`) prints: `Daemon debug logging: enabled`
+- Daemon launch flow logs verbose lines including: config summary, mount path, single-instance guard block reason, launcher branch selection, exact executed command arguments
+
+### Typical debug workflow
+
+1. `cardbot daemon-debug on`
+2. Restart daemon (`cardbot --daemon`)
+3. Insert card and reproduce the issue
+4. Inspect terminal output and log file for `Debug:` lines
+5. `cardbot daemon-debug off`
 
 
 # Uninstalling CardBot
@@ -190,10 +206,10 @@ rm -rf ~/Library/Application\ Support/cardbot ~/.cardbot
 
 ```bash
 # Full uninstall (daemon + binary)
-sh uninstall.sh --install-dir ~/bin
+sh scripts/uninstall.sh --install-dir ~/bin
 
 # Full uninstall + purge config + logs
-sh uninstall.sh --install-dir ~/bin --purge
+sh scripts/uninstall.sh --install-dir ~/bin --purge
 ```
 
 ### Uninstall Script Options
@@ -224,7 +240,7 @@ sh uninstall.sh --install-dir ~/bin --purge
 - CardBot will no longer start at login.
 - No background daemon will be running.
 - Config and logs are preserved unless `--purge` was used.
-- To reinstall, see [INSTALL.md](INSTALL.md).
+- To reinstall, see the installation section at the top of this file.
 
 ## Daemon behavior
 
