@@ -47,6 +47,7 @@ func main() {
 	// --- CLI flags ---
 	var (
 		flagVersion       = flag.Bool("version", false, "print version and exit")
+		flagVerbose       = flag.Bool("verbose", false, "verbose startup output")
 		flagDest          = flag.String("dest", "", "destination path for copied cards")
 		flagDryRun        = flag.Bool("dry-run", false, "scan cards but do not copy files")
 		flagReset         = flag.Bool("reset", false, "clear saved config and exit")
@@ -188,42 +189,75 @@ func main() {
 		a.Printf("[%s] Warning: %s\n", app.Ts(), w)
 	}
 
-	a.Printf("[%s] CardBot %s\n", app.Ts(), version)
-	if cfg.Daemon.Enabled {
-		a.Printf("[%s] Auto-launch: enabled\n", app.Ts())
-	}
-	if cfg.Daemon.StartAtLogin {
-		a.Printf("[%s] Start-at-login: enabled\n", app.Ts())
-	}
-	if cfg.Daemon.Debug {
-		a.Printf("[%s] Daemon debug: enabled\n", app.Ts())
-	}
-
-	// Startup update-check with spinner, then update the same line with result.
-	ts := app.Ts()
-	prefix := fmt.Sprintf("[%s] ", ts)
-	s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-	s.Prefix = prefix + "Checking for updates "
-	s.Start()
+	// Run update check first (needed for both modes).
 	latest, updateErr := app.MaybeCheckForUpdate(logger, version)
-	time.Sleep(500 * time.Millisecond) // ensure user sees activity
-	s.Stop()
 
-	// Update the same line with the result.
+	// Checklist bootup (normal mode) or verbose startup.
 	clearEOL := "\033[K"
-	var msg string
-	if updateErr != nil {
-		msg = "NO SIGNAL"
-	} else if latest != "" {
-		msg = fmt.Sprintf("UPDATE AVAILABLE (%s)", latest)
-	} else {
-		msg = "CardBot is up to date"
-	}
-	fmt.Printf("\r%s%s%s\n", prefix, msg, clearEOL)
+	const tsWidth = 21 // "[2006-01-02T15:04:05]" = 21 chars
+	indent := strings.Repeat(" ", tsWidth)
 
-	// Print action line if update available.
-	if latest != "" && updateErr == nil {
-		fmt.Printf("%sRun: cardbot self-update\n", prefix)
+	if *flagVerbose {
+		// Verbose mode — full bootup checklist with settings after.
+		ts := app.Ts()
+		fmt.Printf("[%s] Starting CardBot v%s ✓\n", ts, version)
+		if updateErr != nil {
+			fmt.Printf("[%s] Checking for updates ✗ NO SIGNAL\n", ts)
+		} else if latest != "" {
+			fmt.Printf("[%s] Checking for updates ✗ v%s available\n", ts, latest)
+		} else {
+			fmt.Printf("[%s] Checking for updates ✓\n", ts)
+		}
+		printVerboseStartup(cfg, cfgPath, version, latest, updateErr)
+	} else {
+		// Normal mode: checklist bootup with spinner per step.
+		// Step 1: Starting CardBot.
+		ts1 := app.Ts()
+		s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+		s.Prefix = fmt.Sprintf("\033[2m[%s]\033[0m Starting CardBot v%s ", ts1, version)
+		s.Start()
+		time.Sleep(300 * time.Millisecond)
+		s.Stop()
+		fmt.Printf("\r\033[2m[%s]\033[0m Starting CardBot v%s ✓%s\n", ts1, version, clearEOL)
+
+		// Step 2: Checking for updates.
+		ts2 := app.Ts()
+		s = spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+		if ts2 == ts1 {
+			s.Prefix = indent + " Checking for updates "
+		} else {
+			s.Prefix = fmt.Sprintf("\033[2m[%s]\033[0m Checking for updates ", ts2)
+		}
+		s.Start()
+		// Update check already ran above; just show the spinner briefly.
+		time.Sleep(200 * time.Millisecond)
+		s.Stop()
+		if ts2 == ts1 {
+			if updateErr != nil {
+				fmt.Printf("\r%s Checking for updates ✗ NO SIGNAL%s\n", indent, clearEOL)
+			} else {
+				fmt.Printf("\r%s Checking for updates ✓%s\n", indent, clearEOL)
+			}
+		} else {
+			if updateErr != nil {
+				fmt.Printf("\r\033[2m[%s]\033[0m Checking for updates ✗ NO SIGNAL%s\n", ts2, clearEOL)
+			} else {
+				fmt.Printf("\r\033[2m[%s]\033[0m Checking for updates ✓%s\n", ts2, clearEOL)
+			}
+		}
+
+		// Print update notification if available (after checklist).
+		if latest != "" && updateErr == nil {
+			fmt.Printf("\nUPDATE AVAILABLE (v%s)\n", latest)
+			fmt.Printf("Run 'cardbot self-update'\n")
+		}
+
+		// Sync last printed timestamp with app for dedup in scanning output.
+		if ts2 != ts1 {
+			a.SetLastTS(ts2)
+		} else {
+			a.SetLastTS(ts1)
+		}
 	}
 
 	if *flagDryRun {
@@ -1024,4 +1058,37 @@ func updateSavedDaemonPrefs(mutator func(cfg *config.Config)) {
 	if err := config.Save(cfg, cfgPath); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: could not save config daemon preferences: %v\n", err)
 	}
+}
+
+
+
+// printVerboseStartup prints settings after the bootup checklist (verbose mode).
+func printVerboseStartup(cfg *config.Config, cfgPath, version, latest string, updateErr error) {
+	// Version/update status first
+	if updateErr != nil {
+		fmt.Println("  Version:     v%s (NO SIGNAL)")
+	} else if latest != "" {
+		fmt.Printf("  Version:     v%s | Update: v%s available\n", version, latest)
+	} else {
+		fmt.Printf("  Version:     v%s (up to date)\n", version)
+	}
+
+	// Settings are shown indented without timestamps (not bootup procedures)
+	if cfgPath != "" {
+		fmt.Printf("  Config:      %s\n", config.ContractPath(cfgPath))
+	}
+	fmt.Printf("  Dest:        %s\n", cfg.Destination.Path)
+	fmt.Printf("  Naming:      %s | Buffer: %dKB | Workers: %d\n",
+		app.NamingModeLabel(cfg.Naming.Mode),
+		cfg.Advanced.BufferSizeKB,
+		cfg.Advanced.ExifWorkers)
+	fmt.Printf("  Colors:      %s\n", boolEnabled(cfg.Output.Color))
+	fmt.Printf("  Daemon:      %s", boolEnabled(cfg.Daemon.Enabled))
+	if cfg.Daemon.Enabled {
+		fmt.Printf(" | Start-at-login: %s", boolEnabled(cfg.Daemon.StartAtLogin))
+		if cfg.Daemon.Debug {
+			fmt.Printf(" | Debug: enabled")
+		}
+	}
+	fmt.Println()
 }

@@ -44,6 +44,7 @@ type App struct {
 	version     string             // app version for display and dotfile
 	phase       appPhase           // explicit runtime phase
 	targetPath  string             // optional: skip scanning and target this path directly
+	lastTS      string             // last printed timestamp for indentation
 
 	newDetector  detectorFactory
 	newAnalyzer  analyzerFactory
@@ -117,6 +118,32 @@ func Ts() string {
 // ts is an internal alias for Ts.
 func ts() string {
 	return Ts()
+}
+
+// tsIndent is whitespace matching the width of a "[2006-01-02T15:04:05]" timestamp.
+const tsIndent = "                     "
+
+// dimTS returns a dimmed timestamp string using ANSI escape codes.
+func dimTS(ts string) string {
+	return "\033[2m[" + ts + "]\033[0m"
+}
+
+// TsPrefix returns a bracketed timestamp prefix for the current second.
+// If the current second matches the last printed timestamp, it returns
+// whitespace of the same width so subsequent lines stay aligned.
+func (a *App) TsPrefix() string {
+	now := ts()
+	if now == a.lastTS {
+		return tsIndent
+	}
+	a.lastTS = now
+	return dimTS(now)
+}
+
+// SetLastTS records a timestamp so that TsPrefix can deduplicate it.
+// Used by main.go to sync the bootup timestamp with the app.
+func (a *App) SetLastTS(t string) {
+	a.lastTS = t
 }
 
 // logf writes to the log file if logging is enabled, and is a no-op otherwise.

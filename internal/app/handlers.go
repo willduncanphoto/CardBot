@@ -44,15 +44,15 @@ func (a *App) handleCardEvent(card *detect.Card) {
 	if a.currentCard == nil {
 		a.currentCard = card
 		a.setPhaseLocked(phaseAnalyzing)
-		scanTS := ts()
-		fmt.Printf("[%s] Scanning started\n", scanTS)
+		fmt.Printf("%s Scanning ✓\n", a.TsPrefix())
 		hw := card.GetHW()
 		diskID := ""
 		if hw != nil {
 			diskID = hw.DiskID()
 		}
-		fmt.Printf("[%s] %s\n", scanTS, formatDetectedVolume(card.Path, diskID))
+		fmt.Printf("%s %s\n", a.TsPrefix(), formatDetectedVolume(card.Path, diskID))
 		a.logf("Card detected: %s", card.Path)
+		scanTS := ts()
 		ctx, cancel := context.WithCancel(context.Background())
 		a.scanCancel = cancel
 		go a.displayCard(ctx, card.Path, scanTS)
@@ -198,11 +198,10 @@ func (a *App) displayCard(ctx context.Context, path, scanTS string) {
 	if result != nil {
 		total = result.FileCount
 	}
-	fmt.Printf("\r[%s] Scanning %d files ✓\n", scanTS, total)
+	fmt.Printf("\r%s Scanning %d files ✓\n", a.TsPrefix(), total)
 	time.Sleep(scanLinePaceDelay)
-	completedTS := ts()
 	durStr := formatElapsed(elapsed)
-	fmt.Printf("[%s] Scan completed in %s\n", completedTS, durStr)
+	fmt.Printf("%s Scan completed in %s\n", dimTS(ts()), durStr)
 	a.logf("Scan completed: %s — %d files in %s", path, total, durStr)
 	fmt.Println()
 
@@ -334,7 +333,6 @@ func (a *App) handleInput(input string) {
 		}
 		return
 	case actionNoCardMessage:
-		fmt.Printf("\nNo card inserted. Waiting for a memory card...\n")
 		return
 	}
 
@@ -343,7 +341,6 @@ func (a *App) handleInput(input string) {
 	card = a.currentCard
 	a.mu.Unlock()
 	if card == nil {
-		fmt.Printf("\nNo card inserted. Waiting for a memory card...\n")
 		return
 	}
 
@@ -443,8 +440,8 @@ func (a *App) launchTargetPath(path string) {
 	a.mu.Unlock()
 
 	scanTS := ts()
-	fmt.Printf("[%s] Scanning started\n", scanTS)
-	fmt.Printf("[%s] \"%s\" (target)\n", scanTS, path)
+	fmt.Printf("%s Scanning ✓\n", a.TsPrefix())
+	fmt.Printf("%s \"%s\" (target)\n", tsIndent, path)
 	a.logf("Target path: %s", path)
 
 	ctx, cancel := context.WithCancel(context.Background())

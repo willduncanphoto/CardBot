@@ -409,8 +409,9 @@ func TestHandleInput_Empty_IsNoOp(t *testing.T) {
 func TestHandleInput_NoCard_NonblankInput(t *testing.T) {
 	a := &App{copiedModes: make(map[string]bool)}
 	out := captureStdout(t, func() { a.handleInput("a") })
-	if !strings.Contains(out, "No card inserted") {
-		t.Fatalf("expected 'No card inserted', got:\n%s", out)
+	// Commands with no card present are silently ignored.
+	if out != "" {
+		t.Fatalf("expected no output when no card present, got: %q", out)
 	}
 }
 

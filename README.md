@@ -37,11 +37,17 @@ Start CardBot:
 cardbot
 ```
 
-Exit CardBot:
+Quit CardBot:
 
 `Ctrl+C`
 
 CardBot will automatically run the setup if no config file is present.
+
+Update to the latest version:
+
+```bash
+cardbot self-update
+```
 
 To run the setup again:
 

@@ -166,6 +166,69 @@ func TestStartAndStopScanning(t *testing.T) {
 	a.stopScanning()
 }
 
+func TestTsPrefix_FirstCall_ReturnsTimestamp(t *testing.T) {
+	a := New(Config{Cfg: config.Defaults()})
+	prefix := a.TsPrefix()
+	// Should contain ANSI dim codes and a bracketed timestamp.
+	if !strings.Contains(prefix, "\033[2m") {
+		t.Fatalf("expected dim ANSI code, got %q", prefix)
+	}
+	if !strings.Contains(prefix, "\033[0m") {
+		t.Fatalf("expected reset ANSI code, got %q", prefix)
+	}
+	if !strings.Contains(prefix, "[") || !strings.Contains(prefix, "]") {
+		t.Fatalf("expected bracketed timestamp, got %q", prefix)
+	}
+}
+
+func TestTsPrefix_SameSecond_ReturnsIndent(t *testing.T) {
+	a := New(Config{Cfg: config.Defaults()})
+	first := a.TsPrefix()
+	second := a.TsPrefix()
+	if first == tsIndent {
+		t.Fatal("first call should not return indent")
+	}
+	if second != tsIndent {
+		t.Fatalf("second call in same second should return indent, got %q", second)
+	}
+}
+
+func TestSetLastTS_SyncsWithTsPrefix(t *testing.T) {
+	a := New(Config{Cfg: config.Defaults()})
+	now := Ts()
+	a.SetLastTS(now)
+	// TsPrefix should return indent since we set the same second.
+	got := a.TsPrefix()
+	if got != tsIndent {
+		t.Fatalf("TsPrefix after SetLastTS with current second should indent, got %q", got)
+	}
+}
+
+func TestSetLastTS_DifferentSecond_ShowsTimestamp(t *testing.T) {
+	a := New(Config{Cfg: config.Defaults()})
+	a.SetLastTS("2000-01-01T00:00:00")
+	got := a.TsPrefix()
+	// Should return a new timestamp, not indent.
+	if got == tsIndent {
+		t.Fatal("TsPrefix after SetLastTS with old timestamp should not indent")
+	}
+}
+
+func TestDimTS(t *testing.T) {
+	got := dimTS("2026-03-22T12:00:00")
+	want := "\033[2m[2026-03-22T12:00:00]\033[0m"
+	if got != want {
+		t.Fatalf("dimTS = %q, want %q", got, want)
+	}
+}
+
+func TestTsIndent_Width(t *testing.T) {
+	// tsIndent must match the visible width of "[2006-01-02T15:04:05]" (21 chars).
+	if len(tsIndent) != 21 {
+		t.Fatalf("tsIndent length = %d, want 21", len(tsIndent))
+	}
+}
+
 type errString string
 
 func (e errString) Error() string { return string(e) }

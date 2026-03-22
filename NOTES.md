@@ -132,6 +132,19 @@ cardbot self-update
 
 Self-update downloads the latest matching release asset and verifies SHA256 checksums.
 
+## CLI Flags
+
+| Flag | Description |
+|------|-------------|
+| `--verbose` | Verbose startup (show all settings, daemon config, update status) |
+| `--dest <path>` | Override destination path for this run |
+| `--dry-run` | Analyze only; do not copy |
+| `--daemon` | Run headless background watcher |
+| `--setup` | Re-run first-time setup (destination, naming mode) |
+| `--reset` | Clear saved config and exit |
+| `--version` | Print version and exit |
+
+## Daemon Mode
 
 Run daemon mode:
 
@@ -168,7 +181,7 @@ After changing debug mode, restart a running daemon process so the new setting i
 
 When `daemon.debug` is `true`:
 
-- Interactive startup (`cardbot`) prints: `Daemon debug: enabled`
+- Interactive startup with `--verbose` prints daemon debug status in verbose settings
 - Daemon startup (`cardbot --daemon`) prints: `Daemon debug logging: enabled`
 - Daemon launch flow logs verbose lines including: config summary, mount path, single-instance guard block reason, launcher branch selection, exact executed command arguments
 
@@ -260,6 +273,19 @@ Config file path is platform specific:
 - macOS: `~/Library/Application Support/cardbot/config.json`
 - Linux: `~/.config/cardbot/config.json`
 
+### First-run setup
+
+When you start CardBot without a config file, it prompts for:
+
+1. **Destination path** — where copied files go (default: `~/Pictures/CardBot`)
+2. **Naming mode** — how files are organized:
+   - `original` — preserves camera original filenames (default)
+   - `timestamp` — renames files with datetime prefix
+
+Run `cardbot --setup` anytime to change these settings.
+
+### Config fields
+
 Important daemon fields:
 
 ```json
@@ -273,6 +299,9 @@ Important daemon fields:
 ```
 
 `terminal_app` is retained for backward compatibility but daemon launches currently use Terminal.app via AppleScript.
+
+`launch_args` — extra arguments passed to the terminal app when launching (advanced use only).
+
 Set `daemon.debug` to `true` to enable verbose daemon/launcher debug logging.
 
 ### 0.7.0 scope (Homebrew support)
@@ -282,15 +311,3 @@ Set `daemon.debug` to `true` to enable verbose daemon/launcher debug logging.
 - Automate formula version/SHA updates on tagged releases
 - Document `brew` install/upgrade/uninstall workflow
 - Improve `self-update` permission guidance for brew-managed installs
-
-
-## CLI flags
-
-| Flag | Description |
-|------|-------------|
-| `--dest <path>` | Override destination path for this run |
-| `--dry-run` | Analyze only; do not copy |
-| `--daemon` | Run headless background watcher |
-| `--setup` | Re-run setup prompts |
-| `--reset` | Clear saved config |
-| `--version` | Print version |
