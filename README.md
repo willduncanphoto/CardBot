@@ -1,6 +1,6 @@
 # CardBot
 
-CardBot is a CLI tool for ingesting camera memory cards on macOS.
+A CLI tool for camera memory cards.
 
 ![CardBot screenshot](screenshot.png)
 
