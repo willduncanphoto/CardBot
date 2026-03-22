@@ -4,15 +4,15 @@ A CLI tool for camera memory cards.
 
 ![CardBot screenshot](screenshot.png)
 
-## What it does
+## What CardBot does
 
-- Detects camera memory cards on macOS
-- Analyzes card content (file count, type, dates, equiptment data)
-- Copies media files quickly and safely. Time is money. Safety is life.
-- Generates dated folder structures for local copy location
-- Supports quick copy modes: all, selects (starred), photos only, videos only, etc.
+- Detects camera memory cards on macOS (and eventually linux)
+- Card content overview (file count, type, dates, equiptment data)
+- Fast and safe copy operations. Time is money. Safety is life.
+- Dated folder structures for local copy location
+- Copy modes: all, selects (starred), photos only, videos only, etc.
 
-## Platform status
+## Platform Support
 
 | Platform | Status | Notes |
 |----------|--------|-------|
@@ -36,9 +36,9 @@ Start interactive mode:
 cardbot
 ```
 
-CardBot will automatically run the setup if it hasn't been run before. 
+CardBot will automatically run the setup the first time you run it.
 
-Run setup again (dest, naming prefs, startup and auto-detect prefs):
+To run the setup again (dest, naming prefs, startup and auto-detect in prefs):
 
 ```bash
 cardbot --setup
