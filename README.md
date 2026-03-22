@@ -68,9 +68,8 @@ cardbot --setup
 
 | Version | Focus | Status |
 |---------|-------|--------|
-| **0.6.0** | General improvements | Next |
-| **0.7.0** | Homebrew support | Planned |
-| **0.8.0** | Copyright check | Planned |
+| **0.6.1** | General improvements | Next |
+| **0.7.0** | Copyright stuff | Planned |
 
 ## Uninstalling
 
