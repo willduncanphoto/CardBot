@@ -18,14 +18,15 @@ const (
 
 // CopyEntry tracks a single copy mode operation.
 type CopyEntry struct {
-	Mode           string    `json:"mode"`
-	Timestamp      time.Time `json:"-"` // Parsed from json string
-	RawTimestamp   string    `json:"timestamp"`
-	Destination    string    `json:"destination"`
-	FilesCopied    int       `json:"files_copied,omitempty"`
-	BytesCopied    int64     `json:"bytes_copied,omitempty"`
-	Verified       bool      `json:"verified,omitempty"`
-	CardbotVersion string    `json:"cardbot_version,omitempty"`
+	Mode               string    `json:"mode"`
+	Timestamp          time.Time `json:"-"` // Parsed from json string
+	RawTimestamp       string    `json:"timestamp"`
+	Destination        string    `json:"destination"`
+	FilesCopied        int       `json:"files_copied,omitempty"`
+	BytesCopied        int64     `json:"bytes_copied,omitempty"`
+	Verified           bool      `json:"verified,omitempty"`
+	VerificationMethod string    `json:"verification_method,omitempty"`
+	CardbotVersion     string    `json:"cardbot_version,omitempty"`
 }
 
 // Status represents the parsed copy state of a card.
@@ -138,13 +139,14 @@ func readExistingSchema(path string) (string, error) {
 
 // WriteOptions configures what gets written to the dotfile.
 type WriteOptions struct {
-	CardPath       string
-	Destination    string
-	Mode           string // "all", "photos", "videos", "selects"
-	FilesCopied    int
-	BytesCopied    int64
-	Verified       bool
-	CardbotVersion string
+	CardPath           string
+	Destination        string
+	Mode               string // "all", "photos", "videos", "selects"
+	FilesCopied        int
+	BytesCopied        int64
+	Verified           bool
+	VerificationMethod string // "size" or "full"
+	CardbotVersion     string
 }
 
 // Write creates or overwrites the .cardbot dotfile on the card.
@@ -164,14 +166,15 @@ func Write(opts WriteOptions) error {
 
 	now := time.Now()
 	newEntry := CopyEntry{
-		Mode:           opts.Mode,
-		Timestamp:      now,
-		RawTimestamp:   now.Format(time.RFC3339),
-		Destination:    opts.Destination,
-		FilesCopied:    opts.FilesCopied,
-		BytesCopied:    opts.BytesCopied,
-		Verified:       opts.Verified,
-		CardbotVersion: opts.CardbotVersion,
+		Mode:               opts.Mode,
+		Timestamp:          now,
+		RawTimestamp:       now.Format(time.RFC3339),
+		Destination:        opts.Destination,
+		FilesCopied:        opts.FilesCopied,
+		BytesCopied:        opts.BytesCopied,
+		Verified:           opts.Verified,
+		VerificationMethod: opts.VerificationMethod,
+		CardbotVersion:     opts.CardbotVersion,
 	}
 
 	var copies []CopyEntry

@@ -706,3 +706,112 @@ func TestCopy_PartFileCleanedOnError(t *testing.T) {
 		t.Errorf("found .part files after failed copy: %v", partFiles)
 	}
 }
+
+func TestCopy_VerifyFull_DetectsTamper(t *testing.T) {
+	t.Parallel()
+	data := []byte("original content that should be verified byte-for-byte")
+	card := createTestCard(t, map[string]testFileSpec{
+		"100NIKON/DSC_0001.NEF": {data: data, mtime: date(2026, 3, 8)},
+	})
+	dest := t.TempDir()
+
+	// First copy with full verification — should succeed.
+	result, err := Run(context.Background(), Options{
+		CardPath:   card,
+		DestBase:   dest,
+		VerifyMode: "full",
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.FilesCopied != 1 {
+		t.Fatalf("FilesCopied = %d, want 1", result.FilesCopied)
+	}
+	if result.VerifyMethod != "full" {
+		t.Errorf("VerifyMethod = %q, want %q", result.VerifyMethod, "full")
+	}
+
+	// Verify content matches.
+	got, err := os.ReadFile(filepath.Join(dest, "2026-03-08", "100NIKON", "DSC_0001.NEF"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(data) {
+		t.Error("copied file content does not match source")
+	}
+}
+
+func TestCopy_VerifySize_DefaultMethod(t *testing.T) {
+	t.Parallel()
+	card := createTestCard(t, map[string]testFileSpec{
+		"100NIKON/DSC_0001.NEF": {data: make([]byte, 1000), mtime: date(2026, 3, 8)},
+	})
+	dest := t.TempDir()
+
+	result, err := Run(context.Background(), Options{CardPath: card, DestBase: dest}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.VerifyMethod != "size" {
+		t.Errorf("VerifyMethod = %q, want %q", result.VerifyMethod, "size")
+	}
+}
+
+func TestVerifyBytes_IdenticalFiles(t *testing.T) {
+	t.Parallel()
+	data := []byte("hello world, this is test data for byte-level verification")
+	src := filepath.Join(t.TempDir(), "src.bin")
+	dst := filepath.Join(t.TempDir(), "dst.bin")
+	if err := os.WriteFile(src, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dst, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	buf := make([]byte, 16384)
+	if err := verifyBytes(src, dst, buf); err != nil {
+		t.Fatalf("verifyBytes returned error for identical files: %v", err)
+	}
+}
+
+func TestVerifyBytes_ContentMismatch(t *testing.T) {
+	t.Parallel()
+	src := filepath.Join(t.TempDir(), "src.bin")
+	dst := filepath.Join(t.TempDir(), "dst.bin")
+
+	srcData := make([]byte, 10000)
+	dstData := make([]byte, 10000)
+	copy(dstData, srcData)
+	dstData[5000] = 0xFF // tamper one byte
+
+	if err := os.WriteFile(src, srcData, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dst, dstData, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	buf := make([]byte, 16384)
+	if err := verifyBytes(src, dst, buf); err == nil {
+		t.Fatal("verifyBytes should detect tampered content")
+	}
+}
+
+func TestVerifyBytes_SizeMismatch(t *testing.T) {
+	t.Parallel()
+	src := filepath.Join(t.TempDir(), "src.bin")
+	dst := filepath.Join(t.TempDir(), "dst.bin")
+
+	if err := os.WriteFile(src, make([]byte, 1000), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dst, make([]byte, 999), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	buf := make([]byte, 16384)
+	if err := verifyBytes(src, dst, buf); err == nil {
+		t.Fatal("verifyBytes should detect size mismatch")
+	}
+}

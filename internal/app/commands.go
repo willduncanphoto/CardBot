@@ -85,6 +85,7 @@ func (a *App) copyFiltered(card *detect.Card, mode string) {
 		AnalyzeResult: analyzeResult,
 		Filter:        filter,
 		NamingMode:    a.cfg.Naming.Mode,
+		VerifyMode:    a.cfg.Advanced.VerifyMode,
 	}
 
 	type copyOutcome struct {
@@ -276,13 +277,14 @@ func (a *App) handleCopySuccess(card *detect.Card, mode, destBase string, result
 		speed)
 
 	dotErr := a.writeDotfile(dotfile.WriteOptions{
-		CardPath:       card.Path,
-		Destination:    destBase,
-		Mode:           mode,
-		FilesCopied:    result.FilesCopied,
-		BytesCopied:    result.BytesCopied,
-		Verified:       true,
-		CardbotVersion: a.version,
+		CardPath:           card.Path,
+		Destination:        destBase,
+		Mode:               mode,
+		FilesCopied:        result.FilesCopied,
+		BytesCopied:        result.BytesCopied,
+		Verified:           true,
+		VerificationMethod: result.VerifyMethod,
+		CardbotVersion:     a.version,
 	})
 	if dotErr != nil {
 		fmt.Printf("[%s] Warning: could not write .cardbot to card: %s\n", ts(), FriendlyErr(dotErr))

@@ -13,6 +13,9 @@ const schemaVersion = "cardbot-config-v1"
 const (
 	NamingOriginal  = "original"
 	NamingTimestamp = "timestamp"
+
+	VerifySize = "size"
+	VerifyFull = "full"
 )
 
 // Config holds all CardBot configuration.
@@ -54,6 +57,7 @@ type Advanced struct {
 	BufferSizeKB int    `json:"buffer_size_kb"`
 	ExifWorkers  int    `json:"exif_workers"`
 	LogFile      string `json:"log_file"`
+	VerifyMode   string `json:"verify_mode"`
 }
 
 // Defaults returns a Config populated with built-in defaults.
@@ -80,6 +84,7 @@ func Defaults() *Config {
 			BufferSizeKB: 256,
 			ExifWorkers:  4,
 			LogFile:      "~/.cardbot/cardbot.log",
+			VerifyMode:   VerifySize,
 		},
 	}
 }
@@ -150,6 +155,12 @@ func Load(path string) (*Config, []string, error) {
 		warnings = append(warnings, fmt.Sprintf("naming.mode %q is invalid, using %q", cfg.Naming.Mode, NamingOriginal))
 	}
 	cfg.Naming.Mode = normalizedNaming
+
+	normalizedVerify := NormalizeVerifyMode(cfg.Advanced.VerifyMode)
+	if cfg.Advanced.VerifyMode != "" && normalizedVerify != cfg.Advanced.VerifyMode {
+		warnings = append(warnings, fmt.Sprintf("advanced.verify_mode %q is invalid, using %q", cfg.Advanced.VerifyMode, VerifySize))
+	}
+	cfg.Advanced.VerifyMode = normalizedVerify
 
 	if !cfg.Daemon.Enabled && cfg.Daemon.StartAtLogin {
 		warnings = append(warnings, "daemon.start_at_login requires daemon.enabled=true, disabling start_at_login")
@@ -224,5 +235,17 @@ func NormalizeNamingMode(mode string) string {
 		return NamingOriginal
 	default:
 		return NamingOriginal
+	}
+}
+
+// NormalizeVerifyMode returns a supported verify mode, defaulting to size.
+func NormalizeVerifyMode(mode string) string {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case VerifyFull, "sha256", "checksum":
+		return VerifyFull
+	case VerifySize, "":
+		return VerifySize
+	default:
+		return VerifySize
 	}
 }

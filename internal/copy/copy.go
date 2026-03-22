@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/illwill/cardbot/internal/analyze"
+	"github.com/illwill/cardbot/internal/config"
 	"github.com/illwill/cardbot/internal/detect"
 )
 
@@ -33,11 +34,12 @@ type Progress struct {
 // On a cancelled or failed copy, FilesCopied/BytesCopied reflect files that
 // completed successfully before the interruption.
 type Result struct {
-	FilesCopied int
-	BytesCopied int64
-	Elapsed     time.Duration
-	DestPath    string
-	Warnings    []string // Non-fatal errors encountered during walk (permission, I/O)
+	FilesCopied  int
+	BytesCopied  int64
+	Elapsed      time.Duration
+	DestPath     string
+	Warnings     []string // Non-fatal errors encountered during walk (permission, I/O)
+	VerifyMethod string   // Verification method used: "size" or "full"
 }
 
 // Options configures the copy operation.
@@ -49,6 +51,7 @@ type Options struct {
 	AnalyzeResult *analyze.Result                       // If provided, use EXIF dates/times for folder grouping and naming
 	Filter        func(relPath string, ext string) bool // If provided, skip files where func returns false
 	NamingMode    string                                // "original" (default) or "timestamp"
+	VerifyMode    string                                // "size" (default) or "full" (SHA-256 read-back)
 }
 
 // fileEntry holds a file to be copied.
@@ -232,6 +235,11 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 	}
 
 	// --- Phase 2: Copy ---
+	fullVerify := config.NormalizeVerifyMode(opts.VerifyMode) == config.VerifyFull
+	verifyMethod := config.VerifySize
+	if fullVerify {
+		verifyMethod = config.VerifyFull
+	}
 	buf := make([]byte, opts.BufferKB*1024)
 	var bytesDone int64
 	var filesDone int
@@ -271,6 +279,14 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 				fmt.Errorf("copying %s: %w", f.relPath, err)
 		}
 
+		// Full verification: read back and compare bytes against source.
+		if fullVerify {
+			if err := verifyBytes(f.srcPath, destPath, buf); err != nil {
+				return partialResult(filesDone, bytesDone, start, opts.DestBase),
+					fmt.Errorf("verification failed for %s: %w", f.relPath, err)
+			}
+		}
+
 		bytesDone += f.size
 		filesDone++
 	}
@@ -286,11 +302,12 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 	}
 
 	return &Result{
-		FilesCopied: filesDone,
-		BytesCopied: bytesDone,
-		Elapsed:     time.Since(start),
-		DestPath:    opts.DestBase,
-		Warnings:    walkWarnings,
+		FilesCopied:  filesDone,
+		BytesCopied:  bytesDone,
+		Elapsed:      time.Since(start),
+		DestPath:     opts.DestBase,
+		Warnings:     walkWarnings,
+		VerifyMethod: verifyMethod,
 	}, nil
 }
 
@@ -382,4 +399,71 @@ func sortFilesByCaptureTime(files []fileEntry) {
 // isHidden reports whether a filename should be skipped.
 func isHidden(name string) bool {
 	return strings.HasPrefix(name, ".")
+}
+
+// verifyBytes reads source and destination files simultaneously and compares
+// them byte-for-byte. Returns nil if identical, an error on any mismatch.
+// Uses the provided buffer (split in half) to avoid extra allocations.
+// This is faster than hashing for large media files: same I/O cost, zero
+// hash overhead, and can short-circuit on first mismatch.
+func verifyBytes(src, dst string, buf []byte) error {
+	sf, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("opening source: %w", err)
+	}
+	defer sf.Close()
+
+	df, err := os.Open(dst)
+	if err != nil {
+		return fmt.Errorf("opening destination: %w", err)
+	}
+	defer df.Close()
+
+	// Split the buffer for simultaneous reads.
+	half := len(buf) / 2
+	if half < 4096 {
+		half = 4096
+		buf = make([]byte, half*2)
+	}
+	srcBuf := buf[:half]
+	dstBuf := buf[half : half*2]
+
+	for {
+		sn, sErr := io.ReadFull(sf, srcBuf)
+		dn, dErr := io.ReadFull(df, dstBuf)
+
+		if sn != dn {
+			return fmt.Errorf("byte count mismatch at offset: source read %d, destination read %d", sn, dn)
+		}
+
+		// Compare the bytes we read.
+		for i := 0; i < sn; i++ {
+			if srcBuf[i] != dstBuf[i] {
+				return fmt.Errorf("content mismatch detected")
+			}
+		}
+
+		// Both reached EOF — files match.
+		if sErr == io.EOF && dErr == io.EOF {
+			return nil
+		}
+		if sErr == io.ErrUnexpectedEOF && dErr == io.ErrUnexpectedEOF {
+			// Final partial block matched above; done.
+			return nil
+		}
+
+		// One EOF'd but the other didn't.
+		if sErr != nil && sErr != io.ErrUnexpectedEOF {
+			if sErr == io.EOF {
+				return fmt.Errorf("source shorter than destination")
+			}
+			return fmt.Errorf("reading source: %w", sErr)
+		}
+		if dErr != nil && dErr != io.ErrUnexpectedEOF {
+			if dErr == io.EOF {
+				return fmt.Errorf("destination shorter than source")
+			}
+			return fmt.Errorf("reading destination: %w", dErr)
+		}
+	}
 }

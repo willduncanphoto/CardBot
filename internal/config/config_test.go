@@ -40,6 +40,9 @@ func TestDefaults(t *testing.T) {
 	if cfg.Advanced.ExifWorkers != 4 {
 		t.Errorf("ExifWorkers = %d, want 4", cfg.Advanced.ExifWorkers)
 	}
+	if cfg.Advanced.VerifyMode != VerifySize {
+		t.Errorf("VerifyMode = %q, want %q", cfg.Advanced.VerifyMode, VerifySize)
+	}
 	if !cfg.Output.Color {
 		t.Error("Color should default to true")
 	}
@@ -427,5 +430,68 @@ func TestSave_CreatesParentDirs(t *testing.T) {
 
 	if _, err := os.Stat(path); err != nil {
 		t.Error("config file should exist after Save")
+	}
+}
+
+func TestNormalizeVerifyMode(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{"", VerifySize},
+		{"size", VerifySize},
+		{"SIZE", VerifySize},
+		{"full", VerifyFull},
+		{" FULL ", VerifyFull},
+		{"sha256", VerifyFull},
+		{"checksum", VerifyFull},
+		{"nope", VerifySize},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("input_%q", tt.in), func(t *testing.T) {
+			if got := NormalizeVerifyMode(tt.in); got != tt.want {
+				t.Errorf("NormalizeVerifyMode(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLoad_InvalidVerifyMode(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(path, []byte(`{"$schema":"cardbot-config-v1","advanced":{"verify_mode":"banana"}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, warnings, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Advanced.VerifyMode != VerifySize {
+		t.Errorf("VerifyMode = %q, want %q", cfg.Advanced.VerifyMode, VerifySize)
+	}
+	if len(warnings) == 0 {
+		t.Fatal("expected warning for invalid verify_mode")
+	}
+}
+
+func TestLoad_VerifyModeFull(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(path, []byte(`{"$schema":"cardbot-config-v1","advanced":{"verify_mode":"full"}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, warnings, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Advanced.VerifyMode != VerifyFull {
+		t.Errorf("VerifyMode = %q, want %q", cfg.Advanced.VerifyMode, VerifyFull)
+	}
+	if len(warnings) != 0 {
+		t.Errorf("unexpected warnings: %v", warnings)
 	}
 }

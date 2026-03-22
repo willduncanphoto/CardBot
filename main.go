@@ -1050,6 +1050,7 @@ func printVerboseSettings(cfg *config.Config, cfgPath string) {
 	}
 	fmt.Printf("  Destination  %s\n", cfg.Destination.Path)
 	fmt.Printf("  Naming       %s\n", app.NamingModeLabel(cfg.Naming.Mode))
+	fmt.Printf("  Verify       %s\n", cfg.Advanced.VerifyMode)
 	fmt.Printf("  Buffer       %d KB\n", cfg.Advanced.BufferSizeKB)
 	fmt.Printf("  Workers      %d\n", cfg.Advanced.ExifWorkers)
 	fmt.Printf("  Colors       %s\n", boolEnabled(cfg.Output.Color))
