@@ -83,9 +83,8 @@ cardbot --self-update
 
 | Version | Focus | Status |
 |---------|-------|--------|
-| **0.5.2** | Launcher diagnostics + uninstall workflow | Current |
-| **0.6.0** | General improvements | Next |
-| **0.7.0** | Homebrew support | Planned |
+| **0.6.0** | Clean slate release | Current |
+| **0.7.0** | Homebrew support | Next |
 | **0.8.0** | Copyright check | Planned |
 
 ## Uninstalling
