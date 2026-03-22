@@ -6,21 +6,19 @@ A CLI tool for camera memory cards.
 
 ## What it does
 
-- Detects inserted camera cards
-- Analyzes card contents (counts, size, dates, camera metadata)
-- Copies files into date-grouped folders
-- Supports copy modes: all, selects (starred), photos, videos
-- Supports background daemon mode (`--daemon`)
-- Supports macOS login auto-start (`install-daemon` / `uninstall-daemon`)
-- Supports direct path targeting (`cardbot /Volumes/<CARD>`)
+- Detects camera memory cards on macOS
+- Analyzes card content (file count, type, dates, equiptment data)
+- Copies media files quickly and safely. Time is money. Safety is life.
+- Generates dated folder structures for local copy location
+- Supports quick copy modes: all, selects (starred), photos only, videos only, etc.
 
 ## Platform status
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| macOS | ✅ Supported | Primary platform |
-| Linux | ⚠️ Experimental | Works in limited testing |
-| Windows | ❌ Not supported | Not planned for now |
+| macOS | Supported | Primary platform |
+| Linux | It might work | Untested |
+| Windows | Ugh | Someday, Maybe |
 
 ## Installation
 
@@ -28,29 +26,6 @@ One-liner installer:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/install.sh | sh
-```
-
-Install a specific release:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/install.sh | sh -s -- --version <version>
-# example: --version v0.5.2
-```
-
-For manual binary install and source build instructions, see **[INSTALL.md](INSTALL.md)**.
-
-### Uninstall (macOS/Linux)
-
-One-liner uninstaller:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/uninstall.sh | sh
-```
-
-Also remove config/log files:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/uninstall.sh | sh -s -- --purge
 ```
 
 ## Usage
@@ -61,42 +36,13 @@ Start interactive mode:
 cardbot
 ```
 
-Run setup (destination, naming mode, daemon prefs):
+CardBot will automatically run the setup if it hasn't been run before. 
+
+Run setup again (dest, naming prefs, startup and auto-detect prefs):
 
 ```bash
 cardbot --setup
 ```
-
-Run daemon mode:
-
-```bash
-cardbot --daemon
-```
-
-Manage login auto-start (macOS):
-
-```bash
-cardbot install-daemon
-cardbot uninstall-daemon
-```
-
-Check daemon status:
-
-```bash
-cardbot daemon-status
-cardbot daemon-status --json
-cardbot daemon-status --recent-launches 5
-```
-
-Toggle daemon debug logging:
-
-```bash
-cardbot daemon-debug status
-cardbot daemon-debug on
-cardbot daemon-debug off
-```
-
-For full daemon debugging details and expected debug output, see **[DEBUG.md](DEBUG.md)**.
 
 ## CLI flags
 
@@ -124,55 +70,14 @@ For full daemon debugging details and expected debug output, see **[DEBUG.md](DE
 | `\` | Cancel active copy |
 | `?` | Help |
 
-## Daemon behavior
-
-- Launches **Terminal.app** via AppleScript on card insert.
-- Terminal selection has been simplified in setup (no app-choice prompt).
-- Single-instance guard prevents duplicate foreground launches.
-- Duplicate-event cooldown suppresses rapid repeat mount events.
-
-If launch fails:
-- Apple Events/automation errors → grant **Automation** permission.
-- Permission denied / operation not permitted → grant **Full Disk Access**.
-
-## Configuration
-
-Config file path is platform specific:
-
-- macOS: `~/Library/Application Support/cardbot/config.json`
-- Linux: `~/.config/cardbot/config.json`
-
-Important daemon fields:
-
-```json
-"daemon": {
-  "enabled": false,
-  "start_at_login": false,
-  "terminal_app": "Terminal",
-  "launch_args": [],
-  "debug": false
-}
-```
-
-`terminal_app` is retained for backward compatibility but daemon launches currently use Terminal.app via AppleScript.
-Set `daemon.debug` to `true` to enable verbose daemon/launcher debug logging.
-
 ## Roadmap
 
 | Version | Focus | Status |
 |---------|-------|--------|
 | **0.5.2** | Launcher diagnostics + uninstall workflow | Current |
-| **0.6.0** | Copy UX improvements | Next |
+| **0.6.0** | General improvements | Next |
 | **0.7.0** | Homebrew support | Planned |
-| **0.8.0** | Copyright metadata injection | Planned |
-
-### 0.7.0 scope (Homebrew support)
-
-- Add Homebrew tap + `cardbot` formula
-- Use release binary assets in formula install flow
-- Automate formula version/SHA updates on tagged releases
-- Document `brew` install/upgrade/uninstall workflow
-- Improve `self-update` permission guidance for brew-managed installs
+| **0.8.0** | Copyright check | Planned |
 
 ## License
 
