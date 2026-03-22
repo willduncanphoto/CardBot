@@ -82,7 +82,7 @@ func New(c Config) *Daemon {
 	}
 	pidPathFn := c.PIDPathFn
 	if pidPathFn == nil {
-		pidPathFn = daemonPidPath
+		pidPathFn = PidPath
 	}
 	pidPath, _ := pidPathFn() // Ignore error; Run() will handle it
 
@@ -101,8 +101,8 @@ func New(c Config) *Daemon {
 	}
 }
 
-// daemonPidPath returns the default path for the daemon PID file.
-func daemonPidPath() (string, error) {
+// PidPath returns the default path for the daemon PID file.
+func PidPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("resolving home directory: %w", err)

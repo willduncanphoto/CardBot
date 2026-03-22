@@ -240,12 +240,6 @@ func main() {
 	}
 }
 
-// promptDestination asks the user to pick a destination path.
-// On macOS, opens the native folder picker. Falls back to readline on Linux.
-func promptDestination(defaultPath string) string {
-	return promptDestinationWithIO(defaultPath, bufio.NewReader(os.Stdin), os.Stdout)
-}
-
 func promptDestinationWithIO(defaultPath string, in *bufio.Reader, out io.Writer) string {
 	if in == nil {
 		in = bufio.NewReader(os.Stdin)
@@ -272,11 +266,6 @@ func promptDestinationWithIO(defaultPath string, in *bufio.Reader, out io.Writer
 
 	// Fallback: readline with shared buffered input.
 	return promptDestinationReadlineIO(expanded, in, out)
-}
-
-// promptDestinationReadline is the fallback path prompt using stdlib.
-func promptDestinationReadline(defaultPath string) string {
-	return promptDestinationReadlineIO(defaultPath, bufio.NewReader(os.Stdin), os.Stdout)
 }
 
 func promptDestinationReadlineIO(defaultPath string, in *bufio.Reader, out io.Writer) string {
@@ -423,59 +412,6 @@ func daemonWorkingDirectoryLabel(configValue, resolved string) string {
 		return configValue
 	}
 	return fmt.Sprintf("%s (%s)", configValue, resolved)
-}
-
-// daemonPidPath returns the path for the daemon PID file.
-func daemonPidPath() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("resolving home directory: %w", err)
-	}
-	return filepath.Join(home, ".cardbot", "cardbot.pid"), nil
-}
-
-// daemonHasRunningInstance checks if another daemon instance is running.
-// Uses the PID file to determine if a daemon process exists.
-// selfPID is excluded from the check so the running daemon doesn't block itself
-// during startup (e.g. when processing an already-mounted card from scanExistingVolumes).
-func daemonHasRunningInstance(selfPID int) (bool, error) {
-	pidPath, err := daemonPidPath()
-	if err != nil {
-		return false, fmt.Errorf("resolving PID path: %w", err)
-	}
-
-	pidData, err := os.ReadFile(pidPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil // No daemon running
-		}
-		return false, fmt.Errorf("reading PID file: %w", err)
-	}
-
-	pid, err := strconv.Atoi(strings.TrimSpace(string(pidData)))
-	if err != nil {
-		// Corrupted PID file; treat as no daemon running
-		return false, nil
-	}
-
-	// Don't count our own PID — the daemon writes its PID before processing
-	// startup events like already-mounted cards.
-	if pid == selfPID {
-		return false, nil
-	}
-
-	// Check if process exists by sending signal 0.
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false, nil
-	}
-	err = process.Signal(syscall.Signal(0))
-	if err != nil {
-		// ESRCH = no such process, or EPERM = permission denied but process exists
-		// In both cases, the process from the PID file is not running
-		return false, nil
-	}
-	return true, nil
 }
 
 func daemonLaunchHint(err error) string {
@@ -826,7 +762,7 @@ func collectSingleInstanceGuardStatus(processName string, selfPID int, checker f
 func collectDaemonInstanceStatus() daemonStatusDIReport {
 	report := daemonStatusDIReport{}
 
-	pidPath, err := daemonPidPath()
+	pidPath, err := daemon.PidPath()
 	if err != nil {
 		report.CheckError = fmt.Sprintf("resolving PID path: %v", err)
 		return report
