@@ -149,12 +149,13 @@ func TestNormalizeDaemonTerminalAppForLaunch(t *testing.T) {
 	}{
 		{"", "Terminal"},
 		{"   ", "Terminal"},
-		{"default", "Terminal"},
-		{"macos default", "Terminal"},
-		{"system default", "Terminal"},
+		{"default", "Default"},
+		{"macos default", "Default"},
+		{"system default", "Default"},
 		{"terminal.app", "Terminal"},
-		{"ghostty", "Terminal"},
-		{"WezTerm", "Terminal"},
+		{"terminal", "Terminal"},
+		{"ghostty", "Ghostty"},
+		{"WezTerm", "WezTerm"},
 	}
 
 	for _, tt := range tests {

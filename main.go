@@ -28,19 +28,70 @@ var (
 )
 
 func main() {
-	if len(os.Args) > 1 {
-		commands := map[string]func([]string) int{
-			"self-update":      func(_ []string) int { return app.RunSelfUpdate(version) },
-			"install-daemon":   func(_ []string) int { return runInstallDaemonCommand() },
-			"uninstall-daemon": func(_ []string) int { return runUninstallDaemonCommand() },
-			"daemon-status":    runDaemonStatusCommand,
-			"daemon-debug":     runDaemonDebugCommand,
-		}
-		if cmd, ok := commands[os.Args[1]]; ok {
-			os.Exit(cmd(os.Args[2:]))
-		}
+	if handled, code := tryRunSubcommand(os.Args[1:]); handled {
+		os.Exit(code)
 	}
 	os.Exit(runInteractive())
+}
+
+func tryRunSubcommand(args []string) (bool, int) {
+	if len(args) == 0 {
+		return false, 0
+	}
+
+	commands := map[string]func([]string) int{
+		"self-update": func(a []string) int {
+			return runNoArgSubcommand("self-update", a, func() int { return app.RunSelfUpdate(version) })
+		},
+		"install-daemon":   func(a []string) int { return runNoArgSubcommand("install-daemon", a, runInstallDaemonCommand) },
+		"uninstall-daemon": func(a []string) int { return runNoArgSubcommand("uninstall-daemon", a, runUninstallDaemonCommand) },
+		"daemon-status":    runDaemonStatusCommand,
+		"daemon-debug":     runDaemonDebugCommand,
+	}
+
+	cmdName := strings.TrimSpace(args[0])
+	if cmd, ok := commands[cmdName]; ok {
+		return true, cmd(args[1:])
+	}
+	if looksLikeCommandToken(cmdName) {
+		fmt.Fprintf(os.Stderr, "Error: unknown command %q\n", cmdName)
+		fmt.Fprintln(os.Stderr, "Known commands: self-update, install-daemon, uninstall-daemon, daemon-status, daemon-debug")
+		return true, 2
+	}
+	return false, 0
+}
+
+func runNoArgSubcommand(name string, args []string, run func() int) int {
+	if len(args) == 0 {
+		return run()
+	}
+	fmt.Fprintf(os.Stderr, "Error: %s does not accept arguments: %s\n", name, strings.Join(args, " "))
+	return 2
+}
+
+func looksLikeCommandToken(arg string) bool {
+	arg = strings.TrimSpace(arg)
+	if arg == "" || strings.HasPrefix(arg, "-") {
+		return false
+	}
+	if isPathLikeArg(arg) {
+		return false
+	}
+	if _, err := os.Stat(arg); err == nil {
+		return false
+	}
+	return true
+}
+
+func isPathLikeArg(arg string) bool {
+	if strings.HasPrefix(arg, "/") || strings.HasPrefix(arg, "./") || strings.HasPrefix(arg, "../") || strings.HasPrefix(arg, "~/") || arg == "~" {
+		return true
+	}
+	if len(arg) >= 2 && arg[1] == ':' {
+		// Windows drive-paths like C:\foo
+		return true
+	}
+	return strings.ContainsRune(arg, os.PathSeparator)
 }
 
 func runInteractive() int {

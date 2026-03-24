@@ -40,15 +40,8 @@ func TestRunSetup_WritesNamingModeToConfig(t *testing.T) {
 	if loaded.Naming.Mode != config.NamingTimestamp {
 		t.Fatalf("Naming.Mode = %q, want %q", loaded.Naming.Mode, config.NamingTimestamp)
 	}
-	// Daemon options remain disabled by default (not prompted in setup)
-	if loaded.Daemon.Enabled {
-		t.Fatalf("Daemon.Enabled = %v, want false", loaded.Daemon.Enabled)
-	}
-	if loaded.Daemon.StartAtLogin {
-		t.Fatalf("Daemon.StartAtLogin = %v, want false", loaded.Daemon.StartAtLogin)
-	}
-	if loaded.Daemon.TerminalApp != "Terminal" {
-		t.Fatalf("Daemon.TerminalApp = %q, want %q", loaded.Daemon.TerminalApp, "Terminal")
+	if loaded.Daemon.TerminalApp == "" {
+		t.Fatal("Daemon.TerminalApp empty, want existing value preserved")
 	}
 }
 
@@ -75,11 +68,39 @@ func TestRunSetup_NormalizesInvalidNamingMode(t *testing.T) {
 	if loaded.Naming.Mode != config.NamingOriginal {
 		t.Fatalf("Naming.Mode = %q, want %q", loaded.Naming.Mode, config.NamingOriginal)
 	}
-	if loaded.Daemon.Enabled {
-		t.Fatalf("Daemon.Enabled = %v, want false", loaded.Daemon.Enabled)
+}
+
+func TestRunSetup_PreservesDaemonPreferences(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.Defaults()
+	cfg.Daemon.Enabled = true
+	cfg.Daemon.StartAtLogin = true
+	cfg.Daemon.TerminalApp = "Ghostty"
+	cfgPath := filepath.Join(t.TempDir(), "config.json")
+
+	err := RunSetup(
+		cfg,
+		cfgPath,
+		func(string) string { return "~/Pictures/Jobs" },
+		func(string) string { return config.NamingTimestamp },
+	)
+	if err != nil {
+		t.Fatalf("RunSetup error: %v", err)
 	}
-	if loaded.Daemon.StartAtLogin {
-		t.Fatalf("Daemon.StartAtLogin = %v, want false", loaded.Daemon.StartAtLogin)
+
+	loaded, _, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	if !loaded.Daemon.Enabled {
+		t.Fatal("Daemon.Enabled = false, want true")
+	}
+	if !loaded.Daemon.StartAtLogin {
+		t.Fatal("Daemon.StartAtLogin = false, want true")
+	}
+	if loaded.Daemon.TerminalApp != "Ghostty" {
+		t.Fatalf("Daemon.TerminalApp = %q, want %q", loaded.Daemon.TerminalApp, "Ghostty")
 	}
 }
 

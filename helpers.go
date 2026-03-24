@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strings"
@@ -37,49 +38,77 @@ func readRecentLauncherExecLines(logPath string, limit int) ([]string, error) {
 		return []string{}, nil
 	}
 
-	lines, err := readRecentMatchingLogLines(logPath, "Launcher exec:", limit)
+	current, err := readRecentMatchingLogLines(logPath, "Launcher exec:", limit)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
 		}
-		lines = []string{}
+		current = []string{}
 	}
 
-	if len(lines) < limit {
-		remaining := limit - len(lines)
-		older, oldErr := readRecentMatchingLogLines(logPath+".old", "Launcher exec:", remaining)
-		if oldErr == nil {
-			lines = append(lines, older...)
-		} else if !os.IsNotExist(oldErr) {
-			return nil, oldErr
+	if len(current) >= limit {
+		return current, nil
+	}
+
+	remaining := limit - len(current)
+	older, oldErr := readRecentMatchingLogLines(logPath+".old", "Launcher exec:", remaining)
+	if oldErr != nil {
+		if os.IsNotExist(oldErr) {
+			return current, nil
 		}
+		return nil, oldErr
 	}
 
-	for i, j := 0, len(lines)-1; i < j; i, j = i+1, j-1 {
-		lines[i], lines[j] = lines[j], lines[i]
-	}
-	return lines, nil
+	// Keep chronological order: older log lines first, then current log lines.
+	return append(older, current...), nil
 }
 
 func readRecentMatchingLogLines(path, needle string, limit int) ([]string, error) {
 	if limit <= 0 {
 		return []string{}, nil
 	}
-	data, err := os.ReadFile(path)
+
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
-	rawLines := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
-	matches := make([]string, 0, limit)
-	for i := len(rawLines) - 1; i >= 0 && len(matches) < limit; i-- {
-		line := strings.TrimSpace(rawLines[i])
-		if line == "" {
+	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+
+	buf := make([]string, limit)
+	count := 0
+	next := 0
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(strings.TrimSuffix(scanner.Text(), "\r"))
+		if line == "" || !strings.Contains(line, needle) {
 			continue
 		}
-		if strings.Contains(line, needle) {
-			matches = append(matches, line)
+		buf[next] = line
+		next = (next + 1) % limit
+		if count < limit {
+			count++
 		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	if count == 0 {
+		return []string{}, nil
+	}
+
+	start := 0
+	if count == limit {
+		start = next
+	}
+
+	matches := make([]string, 0, count)
+	for i := 0; i < count; i++ {
+		idx := (start + i) % limit
+		matches = append(matches, buf[idx])
 	}
 	return matches, nil
 }

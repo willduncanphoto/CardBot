@@ -11,10 +11,22 @@ import (
 	"github.com/illwill/cardbot/launchagent"
 )
 
-func normalizeDaemonTerminalAppForLaunch(_ string) string {
-	// CardBot daemon launches use Terminal.app via AppleScript.
-	// This avoids the ugly .command script header that "Default" produces.
-	return "Terminal"
+func normalizeDaemonTerminalAppForLaunch(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "Terminal"
+	}
+
+	switch strings.ToLower(name) {
+	case "terminal.app", "terminal":
+		return "Terminal"
+	case "default", "macos default", "system default":
+		return "Default"
+	case "ghostty":
+		return "Ghostty"
+	default:
+		return name
+	}
 }
 
 func daemonTerminalAppLabel(name string) string {

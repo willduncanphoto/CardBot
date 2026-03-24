@@ -137,6 +137,9 @@ func collectDaemonStatusReport(opts daemonStatusOptions) daemonStatusReport {
 		}
 	}
 
+	// Runtime behavior honors CARDBOT_* env overrides, so status should too.
+	config.ApplyEnvOverrides(cfg)
+
 	launchArgs := cfg.Daemon.LaunchArgs
 	if launchArgs == nil {
 		launchArgs = []string{}

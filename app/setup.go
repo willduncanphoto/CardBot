@@ -33,20 +33,20 @@ func (p *SetupPrompter) PromptNamingMode(defaultMode string) string {
 }
 
 // RunSetup executes first-time/--setup prompts and persists config.
-// Daemon auto-launch and start-at-login are intentionally NOT prompted here
-// and remain disabled by default. Revisit these options in a future release.
+// Setup currently prompts only destination and naming. Existing daemon settings
+// are preserved as-is.
 func RunSetup(
 	cfg *config.Config,
 	cfgPath string,
 	promptDestinationFn func(string) string,
 	promptNamingFn func(string) string,
 ) error {
+	if cfg == nil {
+		return fmt.Errorf("config is required")
+	}
+
 	cfg.Destination.Path = config.ContractPath(promptDestinationFn(cfg.Destination.Path))
 	cfg.Naming.Mode = config.NormalizeNamingMode(promptNamingFn(cfg.Naming.Mode))
-	// Daemon options remain disabled by default (no prompts)
-	cfg.Daemon.Enabled = false
-	cfg.Daemon.StartAtLogin = false
-	cfg.Daemon.TerminalApp = "Terminal"
 
 	if cfgPath == "" {
 		return nil

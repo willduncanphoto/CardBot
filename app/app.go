@@ -10,9 +10,9 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/illwill/cardbot/analyze"
+	"github.com/illwill/cardbot/cblog"
 	"github.com/illwill/cardbot/config"
 	"github.com/illwill/cardbot/detect"
-	"github.com/illwill/cardbot/cblog"
 )
 
 // UX delays — gives the user time to read each startup line before the next appears.

@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/illwill/cardbot/analyze"
-	"github.com/illwill/cardbot/config"
 	"github.com/illwill/cardbot/cardcopy"
+	"github.com/illwill/cardbot/config"
 	"github.com/illwill/cardbot/detect"
 	"github.com/illwill/cardbot/dotfile"
 	"github.com/illwill/cardbot/speedtest"

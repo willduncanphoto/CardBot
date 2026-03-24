@@ -116,6 +116,8 @@ func ts() string {
 
 // Run starts the daemon event loop. It blocks until SIGINT/SIGTERM.
 func (d *Daemon) Run() error {
+	defer signal.Stop(d.sigChan)
+
 	// Write PID file.
 	if d.pidPath != "" {
 		if err := os.MkdirAll(filepath.Dir(d.pidPath), 0755); err != nil {
