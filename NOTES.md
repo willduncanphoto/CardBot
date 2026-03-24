@@ -304,10 +304,17 @@ Important daemon fields:
 
 Set `daemon.debug` to `true` to enable verbose daemon/launcher debug logging.
 
-### 0.7.0 scope (Homebrew support)
+### 0.7.0 changes
 
-- Add Homebrew tap + `cardbot` formula
-- Use release binary assets in formula install flow
-- Automate formula version/SHA updates on tagged releases
-- Document `brew` install/upgrade/uninstall workflow
-- Improve `self-update` permission guidance for brew-managed installs
+- Structural refactor: packages have clear boundaries (detect, analyze,
+  cardcopy, dotfile, daemon, launcher, config, cblog, instance, launchagent,
+  pick, speedtest, update, ui)
+- Consumer-defined interfaces for testability (cardDetector, cardAnalyzer,
+  factory/runner function types)
+- Explicit state machine with phase transition table
+- Dotfile v2 schema with per-mode copy entries
+- Verify mode: byte-level read-back verification (`advanced.verify_mode: "full"`)
+- Timestamp naming mode (`naming.mode: "timestamp"`)
+- Hardened CLI subcommand routing
+- Code review cleanup: shared `detect.IsHidden()`, `SequenceDigits` constant,
+  `bytes.Equal` in verify, removed dead aliases, relocated helpers
