@@ -280,7 +280,7 @@ func runInteractive() int {
 	// Update notification (both modes).
 	if latest != "" && updateErr == nil {
 		if ts2 == ts1 {
-			fmt.Printf("%s UPDATE AVAILABLE (v%s)\n%s Run 'cardbot self-update'\n",
+			fmt.Printf("\n%s UPDATE AVAILABLE (v%s)\n%s Run 'cardbot self-update'\n",
 				indent, latest, indent)
 		} else {
 			fmt.Printf("\nUPDATE AVAILABLE (v%s)\n", latest)
@@ -311,10 +311,10 @@ func runInteractive() int {
 }
 
 func printLogo() {
-	fmt.Println("                        ▄                   ")
-	fmt.Println("█▀▀▀▀  ▄▄▄▄▄  ▄▄▄▄  ▄▄▄▄█  █▀▀▀█  ▄▄▄▄▄  ▄█▄")
-	fmt.Println("█      ▄▄▄▄█  █     █   █  █▀▀▀▄  █   █   █ ")
-	fmt.Println("█▄▄▄▄  █▄▄▄█  █     █▄▄▄█  █▄▄▄█  █▄▄▄█   █  ")
+	fmt.Println("                         ▄")
+	fmt.Println(" █▀▀▀▀  ▄▄▄▄▄  ▄▄▄▄  ▄▄▄▄█  █▀▀▀█  ▄▄▄▄▄  ▄█▄")
+	fmt.Println(" █      ▄▄▄▄█  █     █   █  █▀▀▀▄  █   █   █")
+	fmt.Println(" █▄▄▄▄  █▄▄▄█  █     █▄▄▄█  █▄▄▄█  █▄▄▄█   █")
 	fmt.Println()
 }
 
