@@ -57,7 +57,8 @@ func TestPrintCardInfo(t *testing.T) {
 	}
 
 	result := &analyze.Result{
-		Gear:       "Nikon Z 9",
+		Bodies:     []string{"NIKON Z 9"},
+		Lenses:     []string{"NIKKOR Z 24-70mm f/2.8 S"},
 		Starred:    1,
 		PhotoCount: 2,
 		VideoCount: 1,
@@ -74,8 +75,9 @@ func TestPrintCardInfo(t *testing.T) {
 	})
 
 	for _, want := range []string{
-		"Status:", "Path:", "Storage:", "Camera:", "Starred:", "Content:",
+		"Status:", "Path:", "Storage:", "Gear:", "Starred:", "Content:",
 		"Total:", "Copy to:", "Naming:", "[a] Copy All",
+		"NIKON Z 9", "NIKKOR Z 24-70mm f/2.8 S",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("output missing %q\n%s", want, out)
@@ -99,6 +101,116 @@ func TestPrintInvalidCardInfo(t *testing.T) {
 	if !strings.Contains(out, "[e] Eject") {
 		t.Fatalf("missing prompt\n%s", out)
 	}
+	// Invalid card with no EXIF falls back to card.Brand.
+	if !strings.Contains(out, "Gear:") {
+		t.Fatalf("missing Gear label\n%s", out)
+	}
+	if !strings.Contains(out, "Unknown") {
+		t.Fatalf("missing brand fallback\n%s", out)
+	}
+}
+
+func TestGearDisplay(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.Output.Color = false
+
+	t.Run("single body single lens", func(t *testing.T) {
+		a := &App{cfg: cfg, copiedModes: make(map[string]bool)}
+		card := &detect.Card{Path: t.TempDir(), Brand: "Nikon", TotalBytes: 1024, UsedBytes: 512}
+		result := &analyze.Result{
+			Bodies:     []string{"NIKON Z 9"},
+			Lenses:     []string{"NIKKOR Z 24-70mm f/2.8 S"},
+			FileCount:  1,
+			PhotoCount: 1,
+			Groups:     []analyze.DateGroup{{Date: "2026-03-25", Size: 100, FileCount: 1, Extensions: []string{"NEF"}}},
+		}
+		out := captureStdout(t, func() { a.printCardInfo(card, result) })
+		if !strings.Contains(out, "NIKON Z 9") {
+			t.Fatalf("missing body\n%s", out)
+		}
+		if !strings.Contains(out, "NIKKOR Z 24-70mm f/2.8 S") {
+			t.Fatalf("missing lens\n%s", out)
+		}
+	})
+
+	t.Run("single body multiple lenses", func(t *testing.T) {
+		a := &App{cfg: cfg, copiedModes: make(map[string]bool)}
+		card := &detect.Card{Path: t.TempDir(), Brand: "Nikon", TotalBytes: 1024, UsedBytes: 512}
+		result := &analyze.Result{
+			Bodies:     []string{"NIKON Z 9"},
+			Lenses:     []string{"NIKKOR Z 24-70mm f/2.8 S", "NIKKOR Z 50mm f/1.2 S", "NIKKOR Z 70-200mm f/2.8 VR S"},
+			FileCount:  3,
+			PhotoCount: 3,
+			Groups:     []analyze.DateGroup{{Date: "2026-03-25", Size: 300, FileCount: 3, Extensions: []string{"NEF"}}},
+		}
+		out := captureStdout(t, func() { a.printCardInfo(card, result) })
+		if !strings.Contains(out, "NIKON Z 9") {
+			t.Fatalf("missing body\n%s", out)
+		}
+		for _, lens := range result.Lenses {
+			if !strings.Contains(out, lens) {
+				t.Fatalf("missing lens %q\n%s", lens, out)
+			}
+		}
+	})
+
+	t.Run("multiple bodies", func(t *testing.T) {
+		a := &App{cfg: cfg, copiedModes: make(map[string]bool)}
+		card := &detect.Card{Path: t.TempDir(), Brand: "Nikon", TotalBytes: 1024, UsedBytes: 512}
+		result := &analyze.Result{
+			Bodies:     []string{"Canon EOS R5", "NIKON Z 9"},
+			Lenses:     []string{"NIKKOR Z 24-70mm f/2.8 S", "RF24-70mm F2.8 L IS USM"},
+			FileCount:  2,
+			PhotoCount: 2,
+			Groups:     []analyze.DateGroup{{Date: "2026-03-25", Size: 200, FileCount: 2, Extensions: []string{"CR3", "NEF"}}},
+		}
+		out := captureStdout(t, func() { a.printCardInfo(card, result) })
+		// Bodies should be comma-separated on one line.
+		if !strings.Contains(out, "Canon EOS R5, NIKON Z 9") {
+			t.Fatalf("missing multi-body line\n%s", out)
+		}
+	})
+
+	t.Run("no EXIF falls back to brand", func(t *testing.T) {
+		a := &App{cfg: cfg, copiedModes: make(map[string]bool)}
+		card := &detect.Card{Path: t.TempDir(), Brand: "Nikon", TotalBytes: 1024, UsedBytes: 512}
+		result := &analyze.Result{
+			FileCount:  1,
+			PhotoCount: 1,
+			Groups:     []analyze.DateGroup{{Date: "2026-03-25", Size: 100, FileCount: 1, Extensions: []string{"NEF"}}},
+		}
+		out := captureStdout(t, func() { a.printCardInfo(card, result) })
+		if !strings.Contains(out, "Gear:") {
+			t.Fatalf("missing Gear label\n%s", out)
+		}
+		// Falls back to card.Brand when no bodies found.
+		if !strings.Contains(out, "Nikon") {
+			t.Fatalf("missing brand fallback\n%s", out)
+		}
+	})
+
+	t.Run("body only no lens", func(t *testing.T) {
+		a := &App{cfg: cfg, copiedModes: make(map[string]bool)}
+		card := &detect.Card{Path: t.TempDir(), Brand: "Nikon", TotalBytes: 1024, UsedBytes: 512}
+		result := &analyze.Result{
+			Bodies:     []string{"NIKON Z 9"},
+			FileCount:  1,
+			PhotoCount: 1,
+			Groups:     []analyze.DateGroup{{Date: "2026-03-25", Size: 100, FileCount: 1, Extensions: []string{"NEF"}}},
+		}
+		out := captureStdout(t, func() { a.printCardInfo(card, result) })
+		if !strings.Contains(out, "NIKON Z 9") {
+			t.Fatalf("missing body\n%s", out)
+		}
+		// No lens lines should appear.
+		lines := strings.Split(out, "\n")
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "NIKKOR") {
+				t.Fatalf("unexpected lens line: %s", trimmed)
+			}
+		}
+	})
 }
 
 func TestShowHelp(t *testing.T) {

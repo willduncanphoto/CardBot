@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/illwill/cardbot/analyze"
 )
 
 // createTestCard builds a fake DCIM structure.
@@ -300,10 +298,8 @@ func TestCopy_ExifDatesOverrideMtime(t *testing.T) {
 	result, err := Run(context.Background(), Options{
 		CardPath: card,
 		DestBase: dest,
-		AnalyzeResult: &analyze.Result{
-			FileDates: map[string]string{
-				"100NIKON/DSC_0001.NEF": "2026-03-08",
-			},
+		FileDates: map[string]string{
+			"100NIKON/DSC_0001.NEF": "2026-03-08",
 		},
 	}, nil)
 	if err != nil {
@@ -335,10 +331,8 @@ func TestCopy_ExifDatePartialOverride(t *testing.T) {
 	result, err := Run(context.Background(), Options{
 		CardPath: card,
 		DestBase: dest,
-		AnalyzeResult: &analyze.Result{
-			FileDates: map[string]string{
-				"100NIKON/DSC_0001.NEF": "2026-03-08",
-			},
+		FileDates: map[string]string{
+			"100NIKON/DSC_0001.NEF": "2026-03-08",
 		},
 	}, nil)
 	if err != nil {
@@ -508,10 +502,8 @@ func TestCopy_PathTraversal(t *testing.T) {
 	result, err := Run(context.Background(), Options{
 		CardPath: card,
 		DestBase: dest,
-		AnalyzeResult: &analyze.Result{
-			FileDates: map[string]string{
-				"100NIKON/DSC_0001.NEF": "../../etc",
-			},
+		FileDates: map[string]string{
+			"100NIKON/DSC_0001.NEF": "../../etc",
 		},
 	}, nil)
 

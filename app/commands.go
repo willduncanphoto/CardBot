@@ -12,6 +12,7 @@ import (
 	"github.com/illwill/cardbot/config"
 	"github.com/illwill/cardbot/detect"
 	"github.com/illwill/cardbot/dotfile"
+	"github.com/illwill/cardbot/fsutil"
 	"github.com/illwill/cardbot/speedtest"
 )
 
@@ -53,15 +54,28 @@ func (a *App) copyFiltered(card *detect.Card, mode string) {
 		a.logf("Card %s appears write-protected", card.Path)
 	}
 
-	// Human-readable mode name for output.
-	modeStr := mode
-	if mode == "selects" {
-		modeStr = "starred"
+	// Human-readable mode label for output.
+	var modeLabel string
+	switch mode {
+	case "all":
+		modeLabel = "all files"
+	case "selects":
+		modeLabel = "starred files"
+	case "photos":
+		modeLabel = "photos"
+	case "videos":
+		modeLabel = "videos"
+	case "today":
+		modeLabel = "today's photos"
+	case "yesterday":
+		modeLabel = "yesterday's photos"
+	default:
+		modeLabel = mode + " files"
 	}
 	if isDryRun {
-		fmt.Printf("\n[%s] Dry-run: would copy %s files to %s\n", Ts(), modeStr, a.cfg.Destination.Path)
+		fmt.Printf("\n[%s] Dry-run: would copy %s to %s\n", Ts(), modeLabel, a.cfg.Destination.Path)
 	} else {
-		fmt.Printf("\n[%s] Copying %s files to %s\n", Ts(), modeStr, a.cfg.Destination.Path)
+		fmt.Printf("\n[%s] Copying %s to %s\n", Ts(), modeLabel, a.cfg.Destination.Path)
 		fmt.Printf("[%s] Press [\\] to cancel\n", Ts())
 	}
 	a.logf("Copy %s starting: %s → %s", mode, card.Path, destBase)
@@ -87,13 +101,36 @@ func (a *App) copyFiltered(card *detect.Card, mode string) {
 		filter = func(relPath, ext string) bool {
 			return analyzeResult != nil && analyzeResult.FileRatings != nil && analyzeResult.FileRatings[relPath] > 0
 		}
+	case "today":
+		todayStr := time.Now().Format("2006-01-02")
+		filter = func(relPath, ext string) bool {
+			if !analyze.IsPhoto(ext) {
+				return false
+			}
+			return analyzeResult != nil && analyzeResult.FileDates != nil && analyzeResult.FileDates[relPath] == todayStr
+		}
+	case "yesterday":
+		yesterdayStr := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+		filter = func(relPath, ext string) bool {
+			if !analyze.IsPhoto(ext) {
+				return false
+			}
+			return analyzeResult != nil && analyzeResult.FileDates != nil && analyzeResult.FileDates[relPath] == yesterdayStr
+		}
+	}
+	var fileDates map[string]string
+	var fileDateTimes map[string]time.Time
+	if analyzeResult != nil {
+		fileDates = analyzeResult.FileDates
+		fileDateTimes = analyzeResult.FileDateTimes
 	}
 	opts := cardcopy.Options{
 		CardPath:      card.Path,
 		DestBase:      destBase,
 		BufferKB:      a.cfg.Advanced.BufferSizeKB,
 		DryRun:        isDryRun,
-		AnalyzeResult: analyzeResult,
+		FileDates:     fileDates,
+		FileDateTimes: fileDateTimes,
 		Filter:        filter,
 		NamingMode:    a.cfg.Naming.Mode,
 		VerifyMode:    a.cfg.Advanced.VerifyMode,
@@ -255,12 +292,12 @@ func (a *App) handleCopySuccess(card *detect.Card, mode, destBase string, result
 		fmt.Printf("[%s] %d files, %s would be copied\n",
 			Ts(),
 			result.FilesCopied,
-			detect.FormatBytes(result.BytesCopied))
+			fsutil.FormatBytes(result.BytesCopied))
 		if previewHidden > 0 {
 			fmt.Printf("[%s] ... +%d more files (preview capped at %d)\n", Ts(), previewHidden, dryRunPreviewLimit)
 		}
 		a.printMu.Unlock()
-		a.logf("Dry-run complete: %d files, %s would be copied", result.FilesCopied, detect.FormatBytes(result.BytesCopied))
+		a.logf("Dry-run complete: %d files, %s would be copied", result.FilesCopied, fsutil.FormatBytes(result.BytesCopied))
 		return
 	}
 
@@ -274,7 +311,7 @@ func (a *App) handleCopySuccess(card *detect.Card, mode, destBase string, result
 		fmt.Printf("[%s] %d files, %s copied in %s (%.1f MB/s) — %d files skipped\n",
 			Ts(),
 			result.FilesCopied,
-			detect.FormatBytes(result.BytesCopied),
+			fsutil.FormatBytes(result.BytesCopied),
 			elapsed,
 			speed,
 			result.FilesSkipped)
@@ -282,14 +319,14 @@ func (a *App) handleCopySuccess(card *detect.Card, mode, destBase string, result
 		fmt.Printf("[%s] %d files, %s copied in %s (%.1f MB/s)\n",
 			Ts(),
 			result.FilesCopied,
-			detect.FormatBytes(result.BytesCopied),
+			fsutil.FormatBytes(result.BytesCopied),
 			elapsed,
 			speed)
 	}
 	a.printMu.Unlock()
 	a.logf("Copy complete: %d files, %s in %s (%.1f MB/s), %d skipped",
 		result.FilesCopied,
-		detect.FormatBytes(result.BytesCopied),
+		fsutil.FormatBytes(result.BytesCopied),
 		elapsed,
 		speed,
 		result.FilesSkipped)

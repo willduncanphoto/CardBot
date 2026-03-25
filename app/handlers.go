@@ -353,14 +353,16 @@ func (a *App) handleInput(input string) {
 		a.handleCopyCmd(card, "photos")
 	case actionCopyVideos:
 		a.handleCopyCmd(card, "videos")
+	case actionCopyToday:
+		a.handleCopyCmd(card, "today")
+	case actionCopyYesterday:
+		a.handleCopyCmd(card, "yesterday")
 	case actionEject:
 		a.ejectCard(card)
 	case actionExitCard:
 		a.cancelCard()
 	case actionHardwareInfo:
 		a.showHardwareInfo(card)
-	case actionSpeedTest:
-		a.runSpeedTest(card)
 	case actionUnknown:
 		fmt.Printf("\nUnknown command %q. Press [?] for help.\n", input)
 		a.printPrompt()

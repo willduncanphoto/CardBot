@@ -1,7 +1,9 @@
 package app
 
 import (
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/illwill/cardbot/analyze"
 )
@@ -16,10 +18,11 @@ const (
 	actionCopySelects
 	actionCopyPhotos
 	actionCopyVideos
+	actionCopyToday
+	actionCopyYesterday
 	actionEject
 	actionExitCard
 	actionHardwareInfo
-	actionSpeedTest
 	actionNoCardMessage
 	actionUnknown
 )
@@ -50,14 +53,16 @@ func parseInputAction(input string, hasCard bool) inputAction {
 		return actionCopyPhotos
 	case "v":
 		return actionCopyVideos
+	case "t":
+		return actionCopyToday
+	case "y":
+		return actionCopyYesterday
 	case "e":
 		return actionEject
 	case "x":
 		return actionExitCard
 	case "i":
 		return actionHardwareInfo
-	case "t":
-		return actionSpeedTest
 	default:
 		return actionUnknown
 	}
@@ -74,6 +79,10 @@ func modeDisplayName(mode string) string {
 		return "Photos"
 	case "videos":
 		return "Videos"
+	case "today":
+		return "Today's photos"
+	case "yesterday":
+		return "Yesterday's photos"
 	default:
 		if mode == "" {
 			return "Copy"
@@ -121,6 +130,14 @@ func copyBlockReason(mode string, invalid, copiedAll, copiedMode bool, result *a
 		if result.VideoCount == 0 {
 			return "No video files found on this card."
 		}
+	case "today":
+		if countPhotosForDate(result, time.Now().Format("2006-01-02")) == 0 {
+			return "No photos from today found on this card."
+		}
+	case "yesterday":
+		if countPhotosForDate(result, time.Now().AddDate(0, 0, -1).Format("2006-01-02")) == 0 {
+			return "No photos from yesterday found on this card."
+		}
 	}
 
 	return ""
@@ -167,4 +184,22 @@ func promptText(invalid, copiedAll bool) string {
 // shouldResumeScanning reports whether the scanner should resume waiting.
 func shouldResumeScanning(noCurrentCard bool, queueLen int) bool {
 	return noCurrentCard && queueLen == 0
+}
+
+// countPhotosForDate counts photo files in the analyze result matching a specific date.
+func countPhotosForDate(result *analyze.Result, date string) int {
+	if result == nil || result.FileDates == nil {
+		return 0
+	}
+	count := 0
+	for relPath, d := range result.FileDates {
+		if d != date {
+			continue
+		}
+		ext := strings.ToUpper(strings.TrimPrefix(filepath.Ext(relPath), "."))
+		if analyze.IsPhoto(ext) {
+			count++
+		}
+	}
+	return count
 }

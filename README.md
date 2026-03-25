@@ -1,15 +1,15 @@
 # CardBot
 
-A CLI tool for camera memory cards
+A CLI tool for camera memory cards.
 
 ![CardBot screenshot](screenshot.png) 
 
 ## What CardBot does
 
 - Detects camera memory cards on macOS
-- Generates an overview of card content (file count, type, dates, equiptment data) 
-- Creates dated folder structures in copy destination
+- Generates an overview of card content (file count, type, dates, equiptment data, etc.) 
 - Copy modes: all, selects (starred), photos only, videos only, etc
+- Rename files during copy operations
 - Tracks card copy status
 
 ## Platform Support
@@ -76,12 +76,11 @@ cardbot --setup
 
 | Version | Focus | Status |
 |---------|-------|--------|
-| **0.7.0** | Stuff | In progress |
-| **0.8.0** | Card copy operations | Planned |
+| **0.7.0** | Code Refactor | Complete |
+| **0.8.0** | Card copy operations | In Progress |
 | **0.9.0** | Stuff | Planned |
 | **0.10.0** | Copyright check and injection | Planned |
-| **0.11.0** | Startup and Card Detection | Planned |
-| **0.12.0** | Startup and Card Detection | Planned |
+| **0.11.0** | Automatic Card Detection | Planned |
 
 
 ## Uninstalling

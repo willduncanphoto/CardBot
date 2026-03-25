@@ -2,11 +2,13 @@ package app
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/illwill/cardbot/analyze"
 	"github.com/illwill/cardbot/cardcopy"
 	"github.com/illwill/cardbot/detect"
 	"github.com/illwill/cardbot/dotfile"
+	"github.com/illwill/cardbot/update"
 )
 
 // cardDetector is the app-facing detector contract.
@@ -31,10 +33,12 @@ type detectorFactory func() cardDetector
 type analyzerFactory func(cardPath string) cardAnalyzer
 type copyRunner func(ctx context.Context, opts cardcopy.Options, onProgress cardcopy.ProgressFunc) (*cardcopy.Result, error)
 type dotfileWriter func(opts dotfile.WriteOptions) error
+type updateChecker func(ctx context.Context, client *http.Client, apiBase, repo, current string) (update.CheckResult, error)
 
 var (
 	defaultDetectorFactory detectorFactory = func() cardDetector { return detect.NewDetector() }
 	defaultAnalyzerFactory analyzerFactory = func(cardPath string) cardAnalyzer { return analyze.New(cardPath) }
 	defaultCopyRunner      copyRunner      = cardcopy.Run
 	defaultDotfileWriter   dotfileWriter   = dotfile.Write
+	defaultUpdateChecker   updateChecker   = update.CheckLatest
 )

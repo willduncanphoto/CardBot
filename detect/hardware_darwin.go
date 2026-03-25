@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/illwill/cardbot/fsutil"
 )
 
 // Pre-compiled regexes for diskutil output parsing.
@@ -272,10 +274,10 @@ func FormatHardwareInfo(info *HardwareInfo) string {
 	add("Partition Map:", info.PartitionScheme)
 
 	if info.DeviceBytes > 0 {
-		add("Raw Size:", FormatBytes(info.DeviceBytes))
+		add("Raw Size:", fsutil.FormatBytes(info.DeviceBytes))
 	}
 	if info.FilesystemBytes > 0 {
-		add("Volume Size:", FormatBytes(info.FilesystemBytes))
+		add("Volume Size:", fsutil.FormatBytes(info.FilesystemBytes))
 	}
 
 	if info.TrimSupport {

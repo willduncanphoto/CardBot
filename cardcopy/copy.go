@@ -14,9 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/illwill/cardbot/analyze"
-	"github.com/illwill/cardbot/config"
-	"github.com/illwill/cardbot/detect"
+	"github.com/illwill/cardbot/fsutil"
 )
 
 // ProgressFunc is called periodically during the copy with current stats.
@@ -54,10 +52,11 @@ type Options struct {
 	DestBase      string                                // Base destination directory (e.g. ~/Pictures/CardBot)
 	BufferKB      int                                   // Copy buffer size in KB (default 256)
 	DryRun        bool                                  // If true, walk and report but don't copy
-	AnalyzeResult *analyze.Result                       // If provided, use EXIF dates/times for folder grouping and naming
+	FileDates     map[string]string                     // EXIF dates: relative path from DCIM → "YYYY-MM-DD"
+	FileDateTimes map[string]time.Time                  // EXIF capture times: relative path from DCIM → timestamp
 	Filter        func(relPath string, ext string) bool // If provided, skip files where func returns false
 	NamingMode    string                                // "original" (default) or "timestamp"
-	VerifyMode    string                                // "size" (default) or "full" (SHA-256 read-back)
+	VerifyMode    string                                // "size" (default) or "full" (byte-level read-back)
 }
 
 // fileEntry holds a file to be copied.
@@ -85,10 +84,8 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 	// Build EXIF lookups from analyze result if available.
 	var exifDates map[string]string
 	var exifDateTimes map[string]time.Time
-	if opts.AnalyzeResult != nil {
-		exifDates = opts.AnalyzeResult.FileDates
-		exifDateTimes = opts.AnalyzeResult.FileDateTimes
-	}
+	exifDates = opts.FileDates
+	exifDateTimes = opts.FileDateTimes
 
 	// --- Phase 1: Collect files ---
 	var files []fileEntry
@@ -106,12 +103,12 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 			return nil
 		}
 		if d.IsDir() {
-			if detect.IsHidden(d.Name()) {
+			if fsutil.IsHidden(d.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		if detect.IsHidden(d.Name()) {
+		if fsutil.IsHidden(d.Name()) {
 			return nil
 		}
 		// Skip symlinks — only copy real files from the card.
@@ -173,8 +170,6 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 
 	// Compute rename mappings for progress reporting and dry-run preview.
 	namingMode := isTimestampMode(opts.NamingMode)
-	seqDigits := SequenceDigits
-	seqMax := sequenceMax(seqDigits)
 	seq := 1
 
 	// Pre-compute all destination paths for dry-run and progress reporting.
@@ -183,9 +178,9 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 		f := &files[i]
 		destRelPath := f.relPath
 		if namingMode {
-			destRelPath = renamedRelativePath(f.relPath, f.captureTime, seq, seqDigits)
+			destRelPath = renamedRelativePath(f.relPath, f.captureTime, seq, SequenceDigits)
 			seq++
-			if seq > seqMax {
+			if seq > sequenceMax {
 				seq = 1 // Loop back to 0001 after 9999
 			}
 		}
@@ -234,14 +229,14 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 	// so this check may be conservative for re-copies.
 	if free, ok := diskFreeBytes(opts.DestBase); ok && free < totalBytes {
 		return nil, fmt.Errorf("not enough space on destination: need %s, only %s free",
-			detect.FormatBytes(totalBytes), detect.FormatBytes(free))
+			fsutil.FormatBytes(totalBytes), fsutil.FormatBytes(free))
 	}
 
 	// --- Phase 2: Copy ---
-	fullVerify := config.NormalizeVerifyMode(opts.VerifyMode) == config.VerifyFull
-	verifyMethod := config.VerifySize
+	fullVerify := opts.VerifyMode == "full"
+	verifyMethod := "size"
 	if fullVerify {
-		verifyMethod = config.VerifyFull
+		verifyMethod = "full"
 	}
 	buf := make([]byte, opts.BufferKB*1024)
 	var bytesDone int64

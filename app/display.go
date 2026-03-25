@@ -10,12 +10,13 @@ import (
 	"github.com/illwill/cardbot/config"
 	"github.com/illwill/cardbot/detect"
 	"github.com/illwill/cardbot/dotfile"
+	"github.com/illwill/cardbot/fsutil"
 	"github.com/illwill/cardbot/ui"
 )
 
 // printCardHeader renders the shared header lines used by both printCardInfo
-// and printInvalidCardInfo: Status, Path, Storage, Camera.
-func (a *App) printCardHeader(card *detect.Card, cameraDisplay string) {
+// and printInvalidCardInfo: Status, Path, Storage, Gear.
+func (a *App) printCardHeader(card *detect.Card, bodies, lenses []string) {
 	status := dotfile.Read(card.Path)
 	fmt.Printf("  Status:   %s\n", dotfile.FormatStatus(status))
 	fmt.Printf("  Path:     %s\n", card.Path)
@@ -24,23 +25,33 @@ func (a *App) printCardHeader(card *detect.Card, cameraDisplay string) {
 		pct = (card.UsedBytes * 100) / card.TotalBytes
 	}
 	fmt.Printf("  Storage:  %s / %s (%d%%)\n",
-		detect.FormatBytes(card.UsedBytes),
-		detect.FormatBytes(card.TotalBytes),
+		fsutil.FormatBytes(card.UsedBytes),
+		fsutil.FormatBytes(card.TotalBytes),
 		pct)
+
+	// Gear: body line (colored), then one lens per line (default color).
+	bodyLine := strings.Join(bodies, ", ")
+	if bodyLine == "" {
+		bodyLine = card.Brand
+	}
 	color, reset := "", ""
 	if a.cfg.Output.Color {
 		color = ui.BrandColor(card.Brand)
 		reset = ui.Reset
 	}
-	fmt.Printf("  Camera:   %s%s%s\n", color, cameraDisplay, reset)
+	fmt.Printf("  Gear:     %s%s%s\n", color, bodyLine, reset)
+	for _, lens := range lenses {
+		fmt.Printf("            %s\n", lens)
+	}
 }
 
 func (a *App) printCardInfo(card *detect.Card, result *analyze.Result) {
-	camera := card.Brand + " (unknown model)"
-	if result != nil && result.Gear != "" {
-		camera = result.Gear
+	var bodies, lenses []string
+	if result != nil {
+		bodies = result.Bodies
+		lenses = result.Lenses
 	}
-	a.printCardHeader(card, camera)
+	a.printCardHeader(card, bodies, lenses)
 
 	if result != nil && result.Starred > 0 {
 		fmt.Printf("  Starred:  %d\n", result.Starred)
@@ -64,13 +75,13 @@ func (a *App) printCardInfo(card *detect.Card, result *analyze.Result) {
 			}
 			fmt.Printf("%s   %10s   %*d   %s\n",
 				g.Date,
-				detect.FormatBytes(g.Size),
+				fsutil.FormatBytes(g.Size),
 				countWidth,
 				g.FileCount,
 				strings.Join(g.Extensions, ", "))
 		}
 		fmt.Println()
-		fmt.Printf("  Total:    %d photos, %d videos, %s\n", result.PhotoCount, result.VideoCount, detect.FormatBytes(result.TotalSize))
+		fmt.Printf("  Total:    %d photos, %d videos, %s\n", result.PhotoCount, result.VideoCount, fsutil.FormatBytes(result.TotalSize))
 	} else {
 		fmt.Println("  Content:  (empty)")
 	}
@@ -103,7 +114,7 @@ func (a *App) printCardInfo(card *detect.Card, result *analyze.Result) {
 // printInvalidCardInfo shows basic card info when a card has no DCIM directory.
 func (a *App) printInvalidCardInfo(card *detect.Card) {
 	fmt.Println()
-	a.printCardHeader(card, card.Brand)
+	a.printCardHeader(card, nil, nil)
 	fmt.Printf("  Content:  (no DCIM — not a camera card)\n")
 	fmt.Println()
 	a.printPrompt()
@@ -122,16 +133,17 @@ func (a *App) printPrompt() {
 func (a *App) showHelp() {
 	fmt.Println()
 	fmt.Println("  Commands:")
-	fmt.Println("  [a]  Copy All     copy all files to destination")
-	fmt.Println("  [s]  Copy Selects copy starred/picked files only")
-	fmt.Println("  [p]  Copy Photos  copy photos only")
-	fmt.Println("  [v]  Copy Videos  copy videos only")
-	fmt.Println("  [e]  Eject        safely eject this card")
-	fmt.Println("  [x]  Exit         skip this card, move to next")
-	fmt.Println("  [i]  Card Info    show hardware details")
-	fmt.Println("  [t]  Speed Test   benchmark read/write speed")
-	fmt.Println("  [\\]  Cancel Copy  cancel the copy in progress")
-	fmt.Println("  [?]  Help         show this help")
+	fmt.Println("  [a]  Copy All        copy all files to destination")
+	fmt.Println("  [s]  Copy Selects    copy starred/picked files only")
+	fmt.Println("  [p]  Copy Photos     copy photos only")
+	fmt.Println("  [v]  Copy Videos     copy videos only")
+	fmt.Println("  [t]  Copy Today      copy today's photos")
+	fmt.Println("  [y]  Copy Yesterday  copy yesterday's photos")
+	fmt.Println("  [e]  Eject           safely eject this card")
+	fmt.Println("  [x]  Exit            skip this card, move to next")
+	fmt.Println("  [i]  Card Info       show hardware details")
+	fmt.Println("  [\\]  Cancel Copy     cancel the copy in progress")
+	fmt.Println("  [?]  Help            show this help")
 	fmt.Println()
 }
 

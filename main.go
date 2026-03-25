@@ -18,11 +18,12 @@ import (
 	"github.com/illwill/cardbot/cblog"
 	"github.com/illwill/cardbot/config"
 	"github.com/illwill/cardbot/instance"
+	"github.com/illwill/cardbot/update"
 )
 
 // Set at build time via -ldflags.
 var (
-	version = "0.7.3"
+	version = "0.8.0"
 	commit  = "none"
 	date    = "unknown"
 )
@@ -265,7 +266,7 @@ func runInteractive() int {
 		s.Prefix = fmt.Sprintf("\033[2m[%s]\033[0m Checking for updates ", ts2)
 	}
 	s.Start()
-	latest, updateErr := app.MaybeCheckForUpdate(logger, version)
+	latest, updateErr := app.MaybeCheckForUpdate(logger, version, update.CheckLatest)
 	s.Stop()
 	updateMark := "✓"
 	if updateErr != nil {

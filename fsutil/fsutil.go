@@ -1,4 +1,7 @@
-package detect
+// Package fsutil provides small filesystem and formatting helpers shared
+// across packages. Kept separate from detect, analyze, and cardcopy so
+// those packages don't depend on each other for utility functions.
+package fsutil
 
 import (
 	"fmt"
@@ -6,14 +9,12 @@ import (
 )
 
 // IsHidden reports whether a filename should be skipped (dot-prefixed).
-// Shared by analyze and cardcopy during DCIM tree walks.
+// Used by analyze and cardcopy during DCIM tree walks.
 func IsHidden(name string) bool {
 	return strings.HasPrefix(name, ".")
 }
 
-// FormatBytes converts bytes to human readable string.
-// This is in a platform-agnostic file (no build constraints) because it's a
-// pure function used across the codebase — detect, copy, and main all call it.
+// FormatBytes converts bytes to a human-readable string.
 func FormatBytes(b int64) string {
 	const unit = 1024
 	if b <= 0 {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/illwill/cardbot/detect"
+	"github.com/illwill/cardbot/fsutil"
 )
 
 // throughputTracker computes smoothed throughput and ETA using an exponential
@@ -130,8 +130,8 @@ func formatThroughput(bps float64) string {
 func FormatProgressLine(p Progress) string {
 	line := fmt.Sprintf("Copying  %d/%d  %s/%s  %s",
 		p.FilesDone, p.FilesTotal,
-		detect.FormatBytes(p.BytesDone),
-		detect.FormatBytes(p.BytesTotal),
+		fsutil.FormatBytes(p.BytesDone),
+		fsutil.FormatBytes(p.BytesTotal),
 		formatThroughput(p.SmoothedBPS),
 	)
 

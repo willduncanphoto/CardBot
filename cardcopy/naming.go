@@ -5,25 +5,14 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/illwill/cardbot/config"
 )
 
 // SequenceDigits is the fixed sequence padding width.
 // 4 digits (0001–9999) prevents rollover on heavy shoot days (1000+ shots).
 const SequenceDigits = 4
 
-// sequenceMax returns the maximum sequence number for the given digit width.
-func sequenceMax(digits int) int {
-	switch digits {
-	case 3:
-		return 999
-	case 4:
-		return 9999
-	default:
-		return 99999
-	}
-}
+// sequenceMax is the maximum sequence number for SequenceDigits width.
+const sequenceMax = 9999
 
 func formatSequence(n, digits int) string {
 	// Sequence is 1-based: 0001-9999, loop back to 0001
@@ -58,5 +47,5 @@ func renamedRelativePath(relPath string, captureTime time.Time, seq, digits int)
 
 // isTimestampMode returns whether the naming mode string means timestamp renaming.
 func isTimestampMode(mode string) bool {
-	return config.NormalizeNamingMode(mode) == config.NamingTimestamp
+	return strings.ToLower(strings.TrimSpace(mode)) == "timestamp"
 }

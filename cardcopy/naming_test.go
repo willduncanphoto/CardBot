@@ -7,9 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/illwill/cardbot/analyze"
-	"github.com/illwill/cardbot/config"
 )
 
 func TestSequenceDigits(t *testing.T) {
@@ -49,29 +46,15 @@ func TestFormatSequence(t *testing.T) {
 	}
 }
 
-func TestSequenceRollover(t *testing.T) {
+func TestSequenceMax(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		digits int
-		max    int
-	}{
-		{3, 999},
-		{4, 9999},
-		{5, 99999},
+	if sequenceMax != 9999 {
+		t.Fatalf("sequenceMax = %d, want 9999", sequenceMax)
 	}
-
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("digits_%d", tt.digits), func(t *testing.T) {
-			got := sequenceMax(tt.digits)
-			if got != tt.max {
-				t.Fatalf("sequenceMax(%d) = %d, want %d", tt.digits, got, tt.max)
-			}
-			// Verify formatSequence at max produces correct width.
-			s := formatSequence(tt.max, tt.digits)
-			if len(s) != tt.digits {
-				t.Errorf("formatSequence(%d, %d) = %q, length %d, want %d", tt.max, tt.digits, s, len(s), tt.digits)
-			}
-		})
+	// Verify formatSequence at max produces correct width.
+	s := formatSequence(sequenceMax, SequenceDigits)
+	if len(s) != SequenceDigits {
+		t.Errorf("formatSequence(%d, %d) = %q, length %d, want %d", sequenceMax, SequenceDigits, s, len(s), SequenceDigits)
 	}
 }
 
@@ -139,17 +122,14 @@ func TestCopy_DryRun_ReportsRenameMappings(t *testing.T) {
 		CardPath:   card,
 		DestBase:   dest,
 		DryRun:     true,
-		NamingMode: config.NamingTimestamp,
-		AnalyzeResult: &analyze.Result{
-			FileCount: 2,
-			FileDates: map[string]string{
-				"100NIKON/DSC_0001.NEF": "2026-03-14",
-				"100NIKON/DSC_0002.MOV": "2026-03-14",
-			},
-			FileDateTimes: map[string]time.Time{
-				"100NIKON/DSC_0001.NEF": ts,
-				"100NIKON/DSC_0002.MOV": ts,
-			},
+		NamingMode: "timestamp",
+		FileDates: map[string]string{
+			"100NIKON/DSC_0001.NEF": "2026-03-14",
+			"100NIKON/DSC_0002.MOV": "2026-03-14",
+		},
+		FileDateTimes: map[string]time.Time{
+			"100NIKON/DSC_0001.NEF": ts,
+			"100NIKON/DSC_0002.MOV": ts,
 		},
 	}, func(p Progress) {
 		if p.SourceFile != "" {
@@ -188,16 +168,14 @@ func TestCopy_TimestampNaming(t *testing.T) {
 	res, err := Run(context.Background(), Options{
 		CardPath:   card,
 		DestBase:   dest,
-		NamingMode: config.NamingTimestamp,
-		AnalyzeResult: &analyze.Result{
-			FileDates: map[string]string{
-				"100NIKON/DSC_0001.NEF": "2026-03-14",
-				"100NIKON/DSC_0002.MOV": "2026-03-14",
-			},
-			FileDateTimes: map[string]time.Time{
-				"100NIKON/DSC_0001.NEF": ts,
-				"100NIKON/DSC_0002.MOV": ts,
-			},
+		NamingMode: "timestamp",
+		FileDates: map[string]string{
+			"100NIKON/DSC_0001.NEF": "2026-03-14",
+			"100NIKON/DSC_0002.MOV": "2026-03-14",
+		},
+		FileDateTimes: map[string]time.Time{
+			"100NIKON/DSC_0001.NEF": ts,
+			"100NIKON/DSC_0002.MOV": ts,
 		},
 	}, nil)
 	if err != nil {
@@ -227,13 +205,10 @@ func TestCopy_TimestampNaming_AlwaysUses4Digits(t *testing.T) {
 	_, err := Run(context.Background(), Options{
 		CardPath:   card,
 		DestBase:   dest,
-		NamingMode: config.NamingTimestamp,
-		AnalyzeResult: &analyze.Result{
-			FileCount: 3048,
-			FileDates: map[string]string{"100NIKON/DSC_0001.NEF": "2026-03-14"},
-			FileDateTimes: map[string]time.Time{
-				"100NIKON/DSC_0001.NEF": ts,
-			},
+		NamingMode: "timestamp",
+		FileDates:     map[string]string{"100NIKON/DSC_0001.NEF": "2026-03-14"},
+		FileDateTimes: map[string]time.Time{
+			"100NIKON/DSC_0001.NEF": ts,
 		},
 	}, nil)
 	if err != nil {
@@ -300,12 +275,10 @@ func TestCopy_OriginalNaming_Unchanged(t *testing.T) {
 	_, err := Run(context.Background(), Options{
 		CardPath:   card,
 		DestBase:   dest,
-		NamingMode: config.NamingOriginal,
-		AnalyzeResult: &analyze.Result{
-			FileDates: map[string]string{"100NIKON/DSC_0001.NEF": "2026-03-08"},
-			FileDateTimes: map[string]time.Time{
-				"100NIKON/DSC_0001.NEF": date(2026, 3, 8),
-			},
+		NamingMode: "original",
+		FileDates:     map[string]string{"100NIKON/DSC_0001.NEF": "2026-03-08"},
+		FileDateTimes: map[string]time.Time{
+			"100NIKON/DSC_0001.NEF": date(2026, 3, 8),
 		},
 	}, nil)
 	if err != nil {

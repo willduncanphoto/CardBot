@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/evanoberholster/imagemeta"
-	"github.com/illwill/cardbot/detect"
+	"github.com/illwill/cardbot/fsutil"
 )
 
 // supportedExif lists extensions we attempt EXIF extraction on (uppercase, no dot).
@@ -75,7 +75,8 @@ type Result struct {
 	PhotoCount    int                  // Number of photo files
 	VideoSize     int64                // Total bytes of video files
 	VideoCount    int                  // Number of video files
-	Gear          string               // Camera make + model (e.g. "Nikon Z 9"), empty if unknown
+	Bodies        []string             // Deduplicated camera bodies from EXIF (e.g. ["NIKON Z 9"])
+	Lenses        []string             // Deduplicated lens names from EXIF (e.g. ["NIKKOR Z 24-70mm f/2.8 S"])
 	Starred       int                  // Count of files with star rating > 0
 	Warnings      []string             // Non-fatal errors encountered during scan (permission, I/O)
 }
@@ -159,7 +160,8 @@ type fileEntry struct {
 // exifResult holds the output from a single EXIF worker.
 type exifResult struct {
 	date   time.Time
-	gear   string
+	body   string
+	lens   string
 	rating int
 	ok     bool
 }
@@ -200,12 +202,12 @@ func (a *Analyzer) Analyze(ctx context.Context) (*Result, error) {
 			return nil
 		}
 		if d.IsDir() {
-			if detect.IsHidden(d.Name()) {
+			if fsutil.IsHidden(d.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		if detect.IsHidden(d.Name()) {
+		if fsutil.IsHidden(d.Name()) {
 			return nil
 		}
 
@@ -257,10 +259,11 @@ func (a *Analyzer) Analyze(ctx context.Context) (*Result, error) {
 				default:
 				}
 				f := &files[idx]
-				date, gear, rating, ok := readExif(f.path, xmpBuf)
+				date, body, lens, rating, ok := readExif(f.path, xmpBuf)
 				exifResults[idx] = exifResult{
 					date:   date,
-					gear:   gear,
+					body:   body,
+					lens:   lens,
 					rating: rating,
 					ok:     ok,
 				}
@@ -302,9 +305,10 @@ loop:
 	fileDates := make(map[string]string, len(files))
 	fileDateTimes := make(map[string]time.Time, len(files))
 	fileRatings := make(map[string]int)
+	bodySet := make(map[string]bool)
+	lensSet := make(map[string]bool)
 	var totalSize, photoSize, videoSize int64
 	var photoCount, videoCount, starred int
-	var gear string
 
 	for i := range files {
 		f := &files[i]
@@ -319,8 +323,11 @@ loop:
 					captureTime = r.date
 					date = r.date.Format("2006-01-02")
 				}
-				if gear == "" && r.gear != "" {
-					gear = r.gear
+				if r.body != "" {
+					bodySet[r.body] = true
+				}
+				if r.lens != "" {
+					lensSet[r.lens] = true
 				}
 				if r.rating > 0 {
 					starred++
@@ -362,7 +369,8 @@ loop:
 		PhotoCount:    photoCount,
 		VideoSize:     videoSize,
 		VideoCount:    videoCount,
-		Gear:          gear,
+		Bodies:        sortedKeys(bodySet),
+		Lenses:        sortedKeys(lensSet),
 		Starred:       starred,
 		Warnings:      warnings,
 	}, nil
@@ -372,15 +380,15 @@ loop:
 // XMP is typically embedded in the first 256KB of RAW files (NEF, CR2, ARW, etc.).
 const xmpBufSize = 256 * 1024
 
-// readExif opens a file and extracts date, camera model, and star rating.
+// readExif opens a file and extracts date, camera body, lens, and star rating.
 // The caller-provided xmpBuf is reused across calls to avoid per-file allocations.
 // The file is read once: first xmpBufSize bytes are read into xmpBuf for XMP scanning,
 // then the file is seeked back to 0 for EXIF decoding.
 // Returns ok=false if EXIF cannot be read (not an error — file is still counted).
-func readExif(path string, xmpBuf []byte) (date time.Time, gear string, rating int, ok bool) {
+func readExif(path string, xmpBuf []byte) (date time.Time, body string, lens string, rating int, ok bool) {
 	f, err := os.Open(path)
 	if err != nil {
-		return time.Time{}, "", 0, false
+		return time.Time{}, "", "", 0, false
 	}
 	defer f.Close()
 
@@ -391,39 +399,19 @@ func readExif(path string, xmpBuf []byte) (date time.Time, gear string, rating i
 
 	// Seek back for EXIF decode.
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		return time.Time{}, "", 0, false
+		return time.Time{}, "", "", 0, false
 	}
 
 	exif, err := imagemeta.Decode(f)
 	if err != nil {
-		return time.Time{}, "", 0, false
+		return time.Time{}, "", "", 0, false
 	}
 
-	// Camera model: combine Make + Model, dedup if Model already contains Make,
-	// and normalize brand casing for clean display (e.g. "NIKON Z 9" → "Nikon Z 9").
-	// Some cameras report Make="NIKON CORPORATION" and Model="NIKON Z 9" — the full
-	// Make doesn't prefix the Model, but the brand word does. In that case, use Model
-	// alone to avoid "NIKON CORPORATION NIKON Z 9".
-	cameraMake := strings.TrimSpace(exif.Make)
-	model := strings.TrimSpace(exif.Model)
-	if cameraMake != "" && model != "" {
-		lowerMake := strings.ToLower(cameraMake)
-		lowerModel := strings.ToLower(model)
-		if strings.HasPrefix(lowerModel, lowerMake) {
-			// Model starts with full Make — use Model alone.
-			gear = model
-		} else if brandWord := strings.Fields(lowerMake); len(brandWord) > 0 &&
-			strings.HasPrefix(lowerModel, brandWord[0]) {
-			// Model starts with the first word of Make (e.g. "NIKON" from "NIKON CORPORATION")
-			// — use Model alone to avoid redundant concatenation.
-			gear = model
-		} else {
-			gear = cameraMake + " " + model
-		}
-	} else if model != "" {
-		gear = model
-	}
-	gear = cleanGear(gear)
+	// Camera body: use raw EXIF Model string as-is.
+	body = strings.TrimSpace(exif.Model)
+
+	// Lens: use raw EXIF LensModel string as-is.
+	lens = strings.TrimSpace(exif.LensModel)
 
 	// Star rating: check EXIF tag first, then scan XMP from the already-read buffer.
 	rating = int(exif.Rating)
@@ -432,7 +420,7 @@ func readExif(path string, xmpBuf []byte) (date time.Time, gear string, rating i
 	}
 
 	dto := exif.DateTimeOriginal()
-	return dto, gear, rating, true
+	return dto, body, lens, rating, true
 }
 
 // xmpRatingPrefix is the byte sequence before the rating digit in XMP.
@@ -488,47 +476,23 @@ func buildGroups(m map[string]*dateAccumulator) []DateGroup {
 	return groups
 }
 
+// sortedKeys returns the keys of a bool map sorted alphabetically.
+func sortedKeys(m map[string]bool) []string {
+	if len(m) == 0 {
+		return nil
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
 // normalizeExt returns the uppercase extension without the leading dot.
 func normalizeExt(ext string) string {
 	if ext == "" {
 		return ""
 	}
 	return strings.ToUpper(ext[1:])
-}
-
-// brandAliases maps uppercase EXIF brand prefixes to clean display names.
-var brandAliases = map[string]string{
-	"NIKON":      "Nikon",
-	"CANON":      "Canon",
-	"SONY":       "Sony",
-	"FUJIFILM":   "Fujifilm",
-	"PANASONIC":  "Panasonic",
-	"OLYMPUS":    "Olympus",
-	"OM DIGITAL": "OM System",
-	"HASSELBLAD": "Hasselblad",
-	"LEICA":      "Leica",
-	"RICOH":      "Ricoh",
-	"PENTAX":     "Pentax",
-	"SIGMA":      "Sigma",
-}
-
-// cleanGear normalizes camera brand casing in the gear string.
-// "NIKON Z 9" → "Nikon Z 9", "Canon EOS R5" stays as-is.
-// The suffix after the brand prefix keeps its original casing since camera
-// model strings contain acronyms (EOS, ILCE) that should not be altered.
-func cleanGear(gear string) string {
-	if gear == "" {
-		return gear
-	}
-	upper := strings.ToUpper(gear)
-	for prefix, clean := range brandAliases {
-		if strings.HasPrefix(upper, prefix) {
-			suffix := strings.TrimSpace(gear[len(prefix):])
-			if suffix == "" {
-				return clean
-			}
-			return clean + " " + suffix
-		}
-	}
-	return gear
 }

@@ -9,20 +9,16 @@ import (
 	"github.com/illwill/cardbot/update"
 )
 
-func resetUpdateDeps() {
-	checkLatest = update.CheckLatest
-}
-
 func TestMaybeCheckForUpdate_UpdateAvailable(t *testing.T) {
-	defer resetUpdateDeps()
+	t.Parallel()
 
 	called := 0
-	checkLatest = func(context.Context, *http.Client, string, string, string) (update.CheckResult, error) {
+	fake := updateChecker(func(_ context.Context, _ *http.Client, _, _, _ string) (update.CheckResult, error) {
 		called++
 		return update.CheckResult{Current: "0.4.1", Latest: "0.4.2", Update: true}, nil
-	}
+	})
 
-	latest, err := MaybeCheckForUpdate(nil, "0.4.1")
+	latest, err := MaybeCheckForUpdate(nil, "0.4.1", fake)
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
@@ -35,13 +31,13 @@ func TestMaybeCheckForUpdate_UpdateAvailable(t *testing.T) {
 }
 
 func TestMaybeCheckForUpdate_UpToDate(t *testing.T) {
-	defer resetUpdateDeps()
+	t.Parallel()
 
-	checkLatest = func(context.Context, *http.Client, string, string, string) (update.CheckResult, error) {
+	fake := updateChecker(func(_ context.Context, _ *http.Client, _, _, _ string) (update.CheckResult, error) {
 		return update.CheckResult{Current: "0.4.1", Latest: "0.4.1", Update: false}, nil
-	}
+	})
 
-	latest, err := MaybeCheckForUpdate(nil, "0.4.1")
+	latest, err := MaybeCheckForUpdate(nil, "0.4.1", fake)
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
@@ -51,13 +47,13 @@ func TestMaybeCheckForUpdate_UpToDate(t *testing.T) {
 }
 
 func TestMaybeCheckForUpdate_Error(t *testing.T) {
-	defer resetUpdateDeps()
+	t.Parallel()
 
-	checkLatest = func(context.Context, *http.Client, string, string, string) (update.CheckResult, error) {
+	fake := updateChecker(func(_ context.Context, _ *http.Client, _, _, _ string) (update.CheckResult, error) {
 		return update.CheckResult{}, errors.New("boom")
-	}
+	})
 
-	latest, err := MaybeCheckForUpdate(nil, "0.4.1")
+	latest, err := MaybeCheckForUpdate(nil, "0.4.1", fake)
 	if err == nil {
 		t.Fatal("expected error")
 	}
