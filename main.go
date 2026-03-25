@@ -22,7 +22,7 @@ import (
 
 // Set at build time via -ldflags.
 var (
-	version = "0.7.2"
+	version = "0.7.3"
 	commit  = "none"
 	date    = "unknown"
 )
@@ -311,26 +311,27 @@ func runInteractive() int {
 }
 
 func printLogo() {
-	lines := []string{
+	leftPad := " "
+	logoLines := []string{
 		"▄▀▀▀▀ ▄▀▀▀▄ █▀▀▀▄ █▀▀▀▄ █▀▀▀▄ ▄▀▀▀▄ ▀▀█▀▀",
 		"█     █▀▀▀█ █▀▀▀▄ █   █ █▀▀▀▄ █   █   █  ",
 		" ▀▀▀▀ ▀   ▀ ▀   ▀ ▀▀▀▀  ▀▀▀▀   ▀▀▀    ▀  ",
 	}
 
+	fmt.Println()
+
 	if supportsANSIColor() {
 		start := [3]int{255, 153, 255}
 		end := [3]int{36, 114, 200}
-		for _, line := range lines {
-			fmt.Println(colorizeGradient(line, start, end))
+		for _, line := range logoLines {
+			fmt.Println(leftPad + colorizeGradient(line, start, end))
 		}
-		fmt.Println()
 		return
 	}
 
-	for _, line := range lines {
-		fmt.Println(line)
+	for _, line := range logoLines {
+		fmt.Println(leftPad + line)
 	}
-	fmt.Println()
 }
 
 func supportsANSIColor() bool {
