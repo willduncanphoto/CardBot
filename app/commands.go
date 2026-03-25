@@ -33,14 +33,14 @@ const dryRunPreviewLimit = 200
 func (a *App) copyFiltered(card *detect.Card, mode string) {
 	destBase, err := config.ExpandPath(a.cfg.Destination.Path)
 	if err != nil {
-		fmt.Printf("\n[%s] Error: %s\n", Ts(), FriendlyErr(err))
+		fmt.Printf("\n%s Error: %s\n", a.TsPrefix(), FriendlyErr(err))
 		a.printPrompt()
 		return
 	}
 
 	// Validate destination path.
 	if destBase == "" {
-		fmt.Printf("\n[%s] Error: no destination configured — run cardbot --setup\n", Ts())
+		fmt.Printf("\n%s Error: no destination configured — run cardbot --setup\n", a.TsPrefix())
 		a.printPrompt()
 		return
 	}
@@ -50,7 +50,7 @@ func (a *App) copyFiltered(card *detect.Card, mode string) {
 	// Warn if the card is write-protected — dotfile won't be written after copy.
 	// (Skip warning in dry-run since we're not writing anyway.)
 	if !isDryRun && cardIsReadOnly(card.Path) {
-		fmt.Printf("\n[%s] Warning: card appears to be write-protected — copy status will not be saved to card\n", Ts())
+		fmt.Printf("\n%s Warning: card appears to be write-protected — copy status will not be saved to card\n", a.TsPrefix())
 		a.logf("Card %s appears write-protected", card.Path)
 	}
 
@@ -73,10 +73,10 @@ func (a *App) copyFiltered(card *detect.Card, mode string) {
 		modeLabel = mode + " files"
 	}
 	if isDryRun {
-		fmt.Printf("\n[%s] Dry-run: would copy %s to %s\n", Ts(), modeLabel, a.cfg.Destination.Path)
+		fmt.Printf("\n%s Dry-run: would copy %s to %s\n", a.TsPrefix(), modeLabel, a.cfg.Destination.Path)
 	} else {
-		fmt.Printf("\n[%s] Copying %s to %s\n", Ts(), modeLabel, a.cfg.Destination.Path)
-		fmt.Printf("[%s] Press [\\] to cancel\n", Ts())
+		fmt.Printf("\n%s Copying %s to %s\n", a.TsPrefix(), modeLabel, a.cfg.Destination.Path)
+		fmt.Printf("%s Press [\\] to cancel\n", a.TsPrefix())
 	}
 	a.logf("Copy %s starting: %s → %s", mode, card.Path, destBase)
 
@@ -342,7 +342,7 @@ func (a *App) handleCopySuccess(card *detect.Card, mode, destBase string, result
 		CardbotVersion:     a.version,
 	})
 	if dotErr != nil {
-		fmt.Printf("[%s] Warning: could not write .cardbot to card: %s\n", Ts(), FriendlyErr(dotErr))
+		fmt.Printf("%s Warning: could not write .cardbot to card: %s\n", a.TsPrefix(), FriendlyErr(dotErr))
 		a.logf("Dotfile write failed: %v", dotErr)
 	} else {
 		a.logf("Dotfile written to %s", card.Path)
@@ -355,7 +355,7 @@ func (a *App) handleCopySuccess(card *detect.Card, mode, destBase string, result
 
 func (a *App) runSpeedTest(card *detect.Card) {
 	fmt.Println()
-	fmt.Printf("[%s] Speed test starting (256 MB)...\n", Ts())
+	fmt.Printf("%s Speed test starting (256 MB)...\n", a.TsPrefix())
 	a.logf("Speed test starting on %s", card.Path)
 
 	result, err := speedtest.Run(card.Path, func(phase string, mbps float64) {
