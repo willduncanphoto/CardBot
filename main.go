@@ -318,53 +318,93 @@ func printLogo() {
 		" ▀▀▀▀ ▀   ▀ ▀   ▀ ▀▀▀▀  ▀▀▀▀   ▀▀▀    ▀  ",
 	}
 
+	start := [3]int{255, 153, 255}
+	end := [3]int{36, 114, 200}
+
 	fmt.Println()
 
-	if supportsANSIColor() {
-		start := [3]int{255, 153, 255}
-		end := [3]int{36, 114, 200}
+	colorMode := detectColorMode()
+
+	if colorMode == colorNone {
 		for _, line := range logoLines {
-			fmt.Println(leftPad + colorizeGradient(line, start, end))
+			fmt.Println(leftPad + line)
 		}
 		return
 	}
 
 	for _, line := range logoLines {
-		fmt.Println(leftPad + line)
+		fmt.Println(leftPad + colorizeGradient(line, start, end, colorMode))
 	}
 }
 
-func supportsANSIColor() bool {
+type colorLevel int
+
+const (
+	colorNone      colorLevel = iota
+	color256                  // 256-color (Terminal.app, etc.)
+	colorTrueColor            // 24-bit truecolor (iTerm2, Ghostty, etc.)
+)
+
+func detectColorMode() colorLevel {
 	if os.Getenv("NO_COLOR") != "" {
-		return false
+		return colorNone
 	}
 	term := os.Getenv("TERM")
 	if term == "" || strings.EqualFold(term, "dumb") {
-		return false
+		return colorNone
 	}
 	fi, err := os.Stdout.Stat()
-	if err != nil {
-		return false
+	if err != nil || fi.Mode()&os.ModeCharDevice == 0 {
+		return colorNone
 	}
-	return fi.Mode()&os.ModeCharDevice != 0
+
+	ct := os.Getenv("COLORTERM")
+	if strings.EqualFold(ct, "truecolor") || strings.EqualFold(ct, "24bit") {
+		return colorTrueColor
+	}
+	return color256
 }
 
-func colorizeGradient(line string, start, end [3]int) string {
+// rgbTo256 finds the closest xterm-256 color index for an RGB value.
+func rgbTo256(r, g, b int) int {
+	// Check if it's close to a grayscale value (232–255).
+	if r == g && g == b {
+		if r < 8 {
+			return 16
+		}
+		if r > 248 {
+			return 231
+		}
+		return 232 + int(float64(r-8)/247.0*24.0+0.5)
+	}
+	// Map to the 6×6×6 color cube (indices 16–231).
+	ri := int(float64(r)/255.0*5.0 + 0.5)
+	gi := int(float64(g)/255.0*5.0 + 0.5)
+	bi := int(float64(b)/255.0*5.0 + 0.5)
+	return 16 + 36*ri + 6*gi + bi
+}
+
+func colorizeGradient(line string, start, end [3]int, mode colorLevel) string {
 	runes := []rune(line)
 	if len(runes) == 0 {
 		return ""
 	}
-	if len(runes) == 1 {
-		return fmt.Sprintf("\033[38;2;%d;%d;%dm%s\033[0m", start[0], start[1], start[2], line)
-	}
 
 	var sb strings.Builder
 	for i, r := range runes {
-		t := float64(i) / float64(len(runes)-1)
+		var t float64
+		if len(runes) > 1 {
+			t = float64(i) / float64(len(runes)-1)
+		}
 		rc := lerp(start[0], end[0], t)
 		gc := lerp(start[1], end[1], t)
 		bc := lerp(start[2], end[2], t)
-		sb.WriteString(fmt.Sprintf("\033[38;2;%d;%d;%dm", rc, gc, bc))
+
+		if mode == colorTrueColor {
+			sb.WriteString(fmt.Sprintf("\033[38;2;%d;%d;%dm", rc, gc, bc))
+		} else {
+			sb.WriteString(fmt.Sprintf("\033[38;5;%dm", rgbTo256(rc, gc, bc)))
+		}
 		sb.WriteRune(r)
 	}
 	sb.WriteString("\033[0m")
