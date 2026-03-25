@@ -46,6 +46,7 @@ type App struct {
 	newAnalyzer  analyzerFactory
 	runCopy      copyRunner
 	writeDotfile dotfileWriter
+	checkLatest  updateChecker
 }
 
 // Config holds the configuration for creating a new App.
@@ -61,6 +62,7 @@ type Config struct {
 	newAnalyzer  analyzerFactory
 	runCopy      copyRunner
 	writeDotfile dotfileWriter
+	checkLatest  updateChecker
 }
 
 // New creates a new App instance.
@@ -83,6 +85,10 @@ func New(c Config) *App {
 	if writeDotfile == nil {
 		writeDotfile = defaultDotfileWriter
 	}
+	checkLatest := c.checkLatest
+	if checkLatest == nil {
+		checkLatest = defaultUpdateChecker
+	}
 
 	return &App{
 		ctx:          context.Background(), // default; overridden by Run()
@@ -99,6 +105,7 @@ func New(c Config) *App {
 		newAnalyzer:  newAnalyzer,
 		runCopy:      runCopy,
 		writeDotfile: writeDotfile,
+		checkLatest:  checkLatest,
 	}
 }
 

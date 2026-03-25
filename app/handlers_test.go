@@ -183,7 +183,7 @@ func TestHandleCardEvent_FirstCard_BecomesCurrentAndAnalyzes(t *testing.T) {
 		Cfg:         cfg,
 		newDetector: func() cardDetector { return fd },
 		newAnalyzer: func(_ string) cardAnalyzer {
-			return &fakeAnalyzer{result: &analyze.Result{Gear: "Nikon Z 9"}}
+			return &fakeAnalyzer{result: &analyze.Result{Bodies: []string{"NIKON Z 9"}}}
 		},
 	})
 	a.detector = fd

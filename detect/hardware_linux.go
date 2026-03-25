@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/illwill/cardbot/fsutil"
 )
 
 // HardwareInfo contains device-level information about the card.
@@ -256,11 +258,11 @@ func FormatHardwareInfo(info *HardwareInfo) string {
 	parts = append(parts, fmt.Sprintf("Device: /dev/%s", info.ParentDevice))
 
 	if info.DeviceBytes > 0 {
-		parts = append(parts, fmt.Sprintf("Raw Size: %s", FormatBytes(info.DeviceBytes)))
+		parts = append(parts, fmt.Sprintf("Raw Size: %s", fsutil.FormatBytes(info.DeviceBytes)))
 	}
 
 	if info.FilesystemBytes > 0 {
-		parts = append(parts, fmt.Sprintf("Filesystem: %s", FormatBytes(info.FilesystemBytes)))
+		parts = append(parts, fmt.Sprintf("Filesystem: %s", fsutil.FormatBytes(info.FilesystemBytes)))
 	}
 
 	if info.IsRemovable {

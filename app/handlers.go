@@ -92,8 +92,8 @@ func (a *App) printQueueNotice(card *detect.Card) {
 	if len(a.cardQueue) > 1 {
 		plural = "s"
 	}
-	fmt.Printf("\n[%s] %s detected (%d card%s in queue)\n",
-		Ts(),
+	fmt.Printf("\n%s %s detected (%d card%s in queue)\n",
+		a.TsPrefix(),
 		card.Brand,
 		len(a.cardQueue),
 		plural)
@@ -166,11 +166,11 @@ func (a *App) displayCard(ctx context.Context, path, scanTS string) {
 			a.setPhaseLocked(phaseReady)
 			card := a.currentCard
 			a.mu.Unlock()
-			fmt.Printf("\r[%s] Card is invalid (no DCIM found)\n", Ts())
+			fmt.Printf("\r%s Card is invalid (no DCIM found)\n", a.TsPrefix())
 			a.logf("Card invalid: no DCIM at %s", path)
 			a.printInvalidCardInfo(card)
 		} else {
-			fmt.Printf("\r[%s] Error scanning card: %s\n", Ts(), FriendlyErr(err))
+			fmt.Printf("\r%s Error scanning card: %s\n", a.TsPrefix(), FriendlyErr(err))
 			a.logf("Error analyzing card %s: %v", path, err)
 			a.finishCard()
 		}
@@ -201,7 +201,7 @@ func (a *App) displayCard(ctx context.Context, path, scanTS string) {
 	fmt.Printf("\r%s Scanning %d files ✓\n", a.TsPrefix(), total)
 	time.Sleep(scanLinePaceDelay)
 	durStr := formatElapsed(elapsed)
-	fmt.Printf("%s Scan completed in %s\n", dimTS(Ts()), durStr)
+	fmt.Printf("%s Scan completed in %s\n", a.TsPrefix(), durStr)
 	a.logf("Scan completed: %s — %d files in %s", path, total, durStr)
 	fmt.Println()
 
@@ -289,7 +289,7 @@ func (a *App) handleRemoval(path string) {
 		}
 		a.mu.Unlock()
 
-		fmt.Printf("\n[%s] Card removed: %s\n", Ts(), path)
+		fmt.Printf("\n%s Card removed: %s\n", a.TsPrefix(), path)
 		a.logf("Card removed: %s", path)
 		if hasQueue {
 			go a.displayCard(nextCtx, nextCard.Path, Ts())
@@ -307,7 +307,7 @@ func (a *App) handleRemoval(path string) {
 		if sameCardPath(card.Path, path) {
 			a.cardQueue = append(a.cardQueue[:i], a.cardQueue[i+1:]...)
 			a.mu.Unlock()
-			fmt.Printf("\n[%s] Queued card removed: %s\n", Ts(), path)
+			fmt.Printf("\n%s Queued card removed: %s\n", a.TsPrefix(), path)
 			a.logf("Queued card removed: %s", path)
 			return
 		}
@@ -353,14 +353,16 @@ func (a *App) handleInput(input string) {
 		a.handleCopyCmd(card, "photos")
 	case actionCopyVideos:
 		a.handleCopyCmd(card, "videos")
+	case actionCopyToday:
+		a.handleCopyCmd(card, "today")
+	case actionCopyYesterday:
+		a.handleCopyCmd(card, "yesterday")
 	case actionEject:
 		a.ejectCard(card)
 	case actionExitCard:
 		a.cancelCard()
 	case actionHardwareInfo:
 		a.showHardwareInfo(card)
-	case actionSpeedTest:
-		a.runSpeedTest(card)
 	case actionUnknown:
 		fmt.Printf("\nUnknown command %q. Press [?] for help.\n", input)
 		a.printPrompt()
@@ -377,7 +379,7 @@ func (a *App) ejectCard(card *detect.Card) {
 		return
 	}
 	a.detector.Remove(card.Path)
-	fmt.Printf("\n[%s] Card ejected: %s\n", Ts(), card.Path)
+	fmt.Printf("\n%s Card ejected: %s\n", a.TsPrefix(), card.Path)
 	a.logf("Card ejected: %s", card.Path)
 	a.finishCard()
 }
@@ -398,7 +400,7 @@ func (a *App) handleCopyCmd(card *detect.Card, mode string) {
 	a.mu.Unlock()
 
 	if ok, reason := canCopy(mode, phase, invalid, copiedAll, copiedMode, analyzeResult); !ok {
-		fmt.Printf("\n[%s] %s\n", Ts(), reason)
+		fmt.Printf("\n%s %s\n", a.TsPrefix(), reason)
 		a.printPrompt()
 		return
 	}

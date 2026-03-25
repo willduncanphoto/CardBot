@@ -33,7 +33,7 @@ func TestTargetPath_SkipsScanningAndAnalyzesImmediately(t *testing.T) {
 			if path != cardPath {
 				t.Fatalf("analyzer path = %q, want %q", path, cardPath)
 			}
-			return &fakeAnalyzer{result: &analyze.Result{Gear: "Nikon Z 9", FileCount: 10}}
+			return &fakeAnalyzer{result: &analyze.Result{Bodies: []string{"NIKON Z 9"}, FileCount: 10}}
 		},
 	})
 	a.detector = fd

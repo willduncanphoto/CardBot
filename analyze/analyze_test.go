@@ -314,31 +314,52 @@ func TestNormalizeExt(t *testing.T) {
 	}
 }
 
-func TestCleanGear(t *testing.T) {
+func TestSortedKeys(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		input string
-		want  string
-	}{
-		{"NIKON Z 9", "Nikon Z 9"},
-		{"NIKON CORPORATION NIKON Z 9", "Nikon CORPORATION NIKON Z 9"}, // readExif dedup prevents this input; cleanGear handles prefix only
-		{"Canon EOS R5", "Canon EOS R5"},
-		{"SONY ILCE-7RM5", "Sony ILCE-7RM5"},
-		{"FUJIFILM X-T5", "Fujifilm X-T5"},
-		{"PANASONIC DC-GH6", "Panasonic DC-GH6"},
-		{"OLYMPUS E-M1MarkIII", "Olympus E-M1MarkIII"},
-		{"OM DIGITAL SOLUTIONS OM-1", "OM System SOLUTIONS OM-1"},
-		{"HASSELBLAD X2D", "Hasselblad X2D"},
-		{"LEICA Q3", "Leica Q3"},
-		{"RICOH GR IIIx", "Ricoh GR IIIx"},
-		{"Unknown Brand X", "Unknown Brand X"}, // passthrough
-		{"", ""},
-	}
-	for _, tt := range tests {
-		if got := cleanGear(tt.input); got != tt.want {
-			t.Errorf("cleanGear(%q) = %q, want %q", tt.input, got, tt.want)
+
+	t.Run("nil map", func(t *testing.T) {
+		got := sortedKeys(nil)
+		if got != nil {
+			t.Fatalf("expected nil, got %v", got)
 		}
-	}
+	})
+
+	t.Run("empty map", func(t *testing.T) {
+		got := sortedKeys(map[string]bool{})
+		if got != nil {
+			t.Fatalf("expected nil, got %v", got)
+		}
+	})
+
+	t.Run("sorted output", func(t *testing.T) {
+		got := sortedKeys(map[string]bool{
+			"NIKKOR Z 70-200mm f/2.8 VR S": true,
+			"NIKKOR Z 24-70mm f/2.8 S":     true,
+			"NIKKOR Z 50mm f/1.2 S":         true,
+		})
+		want := []string{
+			"NIKKOR Z 24-70mm f/2.8 S",
+			"NIKKOR Z 50mm f/1.2 S",
+			"NIKKOR Z 70-200mm f/2.8 VR S",
+		}
+		if len(got) != len(want) {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Fatalf("position %d: got %q, want %q", i, got[i], want[i])
+			}
+		}
+	})
+
+	t.Run("single entry", func(t *testing.T) {
+		got := sortedKeys(map[string]bool{
+			"NIKON Z 9": true,
+		})
+		if len(got) != 1 || got[0] != "NIKON Z 9" {
+			t.Fatalf("expected [NIKON Z 9], got %v", got)
+		}
+	})
 }
 
 func TestScanXMPRating(t *testing.T) {

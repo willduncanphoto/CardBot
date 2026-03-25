@@ -17,13 +17,11 @@ const (
 	selfUpdateTimeout  = 60 * time.Second
 )
 
-var checkLatest = update.CheckLatest
-
 // MaybeCheckForUpdate checks for updates on every app startup.
-func MaybeCheckForUpdate(logger *cblog.Logger, version string) (string, error) {
+func MaybeCheckForUpdate(logger *cblog.Logger, version string, checker updateChecker) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), updateCheckTimeout)
 	defer cancel()
-	res, err := checkLatest(ctx, nil, update.DefaultAPIBase, update.DefaultRepo, version)
+	res, err := checker(ctx, nil, update.DefaultAPIBase, update.DefaultRepo, version)
 	if err != nil {
 		if logger != nil {
 			logger.Printf("Update check failed: %v", err)

@@ -11,11 +11,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
-	"github.com/illwill/cardbot/analyze"
-	"github.com/illwill/cardbot/config"
-	"github.com/illwill/cardbot/detect"
+	"github.com/illwill/cardbot/fsutil"
 )
 
 // ProgressFunc is called periodically during the copy with current stats.
@@ -27,8 +26,10 @@ type Progress struct {
 	FilesTotal  int
 	BytesDone   int64
 	BytesTotal  int64
-	CurrentFile string // relative destination path being copied
-	SourceFile  string // relative source path (for dry-run rename preview)
+	CurrentFile string  // relative destination path being copied
+	SourceFile  string  // relative source path (for dry-run rename preview)
+	SmoothedBPS float64 // EMA-smoothed bytes per second (-1 if not yet available)
+	ETASeconds  float64 // estimated seconds remaining (-1 if not yet available)
 }
 
 // Result holds the final outcome of a copy operation.
@@ -36,7 +37,9 @@ type Progress struct {
 // completed successfully before the interruption.
 type Result struct {
 	FilesCopied  int
+	FilesSkipped int
 	BytesCopied  int64
+	BytesSkipped int64
 	Elapsed      time.Duration
 	DestPath     string
 	Warnings     []string // Non-fatal errors encountered during walk (permission, I/O)
@@ -49,10 +52,11 @@ type Options struct {
 	DestBase      string                                // Base destination directory (e.g. ~/Pictures/CardBot)
 	BufferKB      int                                   // Copy buffer size in KB (default 256)
 	DryRun        bool                                  // If true, walk and report but don't copy
-	AnalyzeResult *analyze.Result                       // If provided, use EXIF dates/times for folder grouping and naming
+	FileDates     map[string]string                     // EXIF dates: relative path from DCIM → "YYYY-MM-DD"
+	FileDateTimes map[string]time.Time                  // EXIF capture times: relative path from DCIM → timestamp
 	Filter        func(relPath string, ext string) bool // If provided, skip files where func returns false
 	NamingMode    string                                // "original" (default) or "timestamp"
-	VerifyMode    string                                // "size" (default) or "full" (SHA-256 read-back)
+	VerifyMode    string                                // "size" (default) or "full" (byte-level read-back)
 }
 
 // fileEntry holds a file to be copied.
@@ -80,10 +84,8 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 	// Build EXIF lookups from analyze result if available.
 	var exifDates map[string]string
 	var exifDateTimes map[string]time.Time
-	if opts.AnalyzeResult != nil {
-		exifDates = opts.AnalyzeResult.FileDates
-		exifDateTimes = opts.AnalyzeResult.FileDateTimes
-	}
+	exifDates = opts.FileDates
+	exifDateTimes = opts.FileDateTimes
 
 	// --- Phase 1: Collect files ---
 	var files []fileEntry
@@ -101,12 +103,12 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 			return nil
 		}
 		if d.IsDir() {
-			if detect.IsHidden(d.Name()) {
+			if fsutil.IsHidden(d.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		if detect.IsHidden(d.Name()) {
+		if fsutil.IsHidden(d.Name()) {
 			return nil
 		}
 		// Skip symlinks — only copy real files from the card.
@@ -168,8 +170,6 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 
 	// Compute rename mappings for progress reporting and dry-run preview.
 	namingMode := isTimestampMode(opts.NamingMode)
-	seqDigits := SequenceDigits
-	seqMax := sequenceMax(seqDigits)
 	seq := 1
 
 	// Pre-compute all destination paths for dry-run and progress reporting.
@@ -178,9 +178,9 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 		f := &files[i]
 		destRelPath := f.relPath
 		if namingMode {
-			destRelPath = renamedRelativePath(f.relPath, f.captureTime, seq, seqDigits)
+			destRelPath = renamedRelativePath(f.relPath, f.captureTime, seq, SequenceDigits)
 			seq++
-			if seq > seqMax {
+			if seq > sequenceMax {
 				seq = 1 // Loop back to 0001 after 9999
 			}
 		}
@@ -229,26 +229,35 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 	// so this check may be conservative for re-copies.
 	if free, ok := diskFreeBytes(opts.DestBase); ok && free < totalBytes {
 		return nil, fmt.Errorf("not enough space on destination: need %s, only %s free",
-			detect.FormatBytes(totalBytes), detect.FormatBytes(free))
+			fsutil.FormatBytes(totalBytes), fsutil.FormatBytes(free))
 	}
 
 	// --- Phase 2: Copy ---
-	fullVerify := config.NormalizeVerifyMode(opts.VerifyMode) == config.VerifyFull
-	verifyMethod := config.VerifySize
+	fullVerify := opts.VerifyMode == "full"
+	verifyMethod := "size"
 	if fullVerify {
-		verifyMethod = config.VerifyFull
+		verifyMethod = "full"
 	}
 	buf := make([]byte, opts.BufferKB*1024)
 	var bytesDone int64
 	var filesDone int
+	var filesSkipped int
+	var bytesSkipped int64
 	start := time.Now()
 	madeDir := make(map[string]bool, 32)
+
+	// Intra-file byte counter for live progress on large files.
+	var fileByteCounter atomic.Int64
+
+	// Throughput tracker for smoothed MB/s and ETA.
+	tracker := newThroughputTracker()
+	tracker.start(start, 0)
 
 	for i := range files {
 		// Check for cancellation before each file.
 		select {
 		case <-ctx.Done():
-			return partialResult(filesDone, bytesDone, start, opts.DestBase), ctx.Err()
+			return partialResult(filesDone, filesSkipped, bytesDone, bytesSkipped, start, opts.DestBase), ctx.Err()
 		default:
 		}
 
@@ -258,29 +267,46 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 		// Guard against path traversal via malicious card paths.
 		destPath = filepath.Clean(destPath)
 		if !strings.HasPrefix(destPath, filepath.Clean(opts.DestBase)+string(filepath.Separator)) {
-			return partialResult(filesDone, bytesDone, start, opts.DestBase),
+			return partialResult(filesDone, filesSkipped, bytesDone, bytesSkipped, start, opts.DestBase),
 				fmt.Errorf("refusing to write outside destination: %s", destPath)
 		}
 
+		// Check if destination already exists with correct size (skip).
+		if info, statErr := os.Stat(destPath); statErr == nil && info.Size() == f.size {
+			filesSkipped++
+			bytesSkipped += f.size
+			bytesDone += f.size
+			filesDone++
+			continue
+		}
+
+		// Reset intra-file counter for this file.
+		fileByteCounter.Store(0)
+
 		if onProgress != nil {
+			now := time.Now()
+			bps := tracker.sample(now, bytesDone)
+			remaining := totalBytes - bytesDone
 			onProgress(Progress{
 				FilesDone:   filesDone,
 				FilesTotal:  len(files),
 				BytesDone:   bytesDone,
 				BytesTotal:  totalBytes,
 				CurrentFile: destPaths[i],
+				SmoothedBPS: bps,
+				ETASeconds:  tracker.eta(remaining),
 			})
 		}
 
-		if err := copyFile(destPath, f.srcPath, f.size, buf, madeDir); err != nil {
-			return partialResult(filesDone, bytesDone, start, opts.DestBase),
+		if err := copyFileCtx(ctx, destPath, f.srcPath, f.size, buf, madeDir, &fileByteCounter); err != nil {
+			return partialResult(filesDone, filesSkipped, bytesDone, bytesSkipped, start, opts.DestBase),
 				fmt.Errorf("copying %s: %w", f.relPath, err)
 		}
 
 		// Full verification: read back and compare bytes against source.
 		if fullVerify {
 			if err := verifyBytes(f.srcPath, destPath, buf); err != nil {
-				return partialResult(filesDone, bytesDone, start, opts.DestBase),
+				return partialResult(filesDone, filesSkipped, bytesDone, bytesSkipped, start, opts.DestBase),
 					fmt.Errorf("verification failed for %s: %w", f.relPath, err)
 			}
 		}
@@ -291,17 +317,23 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 
 	// Final progress
 	if onProgress != nil {
+		now := time.Now()
+		bps := tracker.sample(now, bytesDone)
 		onProgress(Progress{
-			FilesDone:  filesDone,
-			FilesTotal: len(files),
-			BytesDone:  bytesDone,
-			BytesTotal: totalBytes,
+			FilesDone:   filesDone,
+			FilesTotal:  len(files),
+			BytesDone:   bytesDone,
+			BytesTotal:  totalBytes,
+			SmoothedBPS: bps,
+			ETASeconds:  -1, // copy is done
 		})
 	}
 
 	return &Result{
-		FilesCopied:  filesDone,
-		BytesCopied:  bytesDone,
+		FilesCopied:  filesDone - filesSkipped,
+		FilesSkipped: filesSkipped,
+		BytesCopied:  bytesDone - bytesSkipped,
+		BytesSkipped: bytesSkipped,
 		Elapsed:      time.Since(start),
 		DestPath:     opts.DestBase,
 		Warnings:     walkWarnings,
@@ -310,24 +342,27 @@ func Run(ctx context.Context, opts Options, onProgress ProgressFunc) (*Result, e
 }
 
 // partialResult builds a Result from in-progress counters.
-func partialResult(files int, bytes int64, start time.Time, dest string) *Result {
+func partialResult(files, skipped int, bytes, bytesSkipped int64, start time.Time, dest string) *Result {
 	return &Result{
-		FilesCopied: files,
-		BytesCopied: bytes,
-		Elapsed:     time.Since(start),
-		DestPath:    dest,
+		FilesCopied:  files - skipped,
+		FilesSkipped: skipped,
+		BytesCopied:  bytes - bytesSkipped,
+		BytesSkipped: bytesSkipped,
+		Elapsed:      time.Since(start),
+		DestPath:     dest,
 	}
 }
 
-// copyFile copies a single file with size verification and atomic rename.
+// copyFileCtx copies a single file with size verification, atomic rename,
+// and mid-file cancellation support.
+//
 // Writes to a temporary .part file, syncs, then renames to the final path.
-// If the destination already exists with the correct size, it is skipped.
+// The trackingReader wraps the source to update fileBytes atomically during
+// the copy (for intra-file progress) and to check ctx for cancellation every
+// 4 MB (so large video files can be cancelled promptly).
+//
 // madeDir caches directories already created to avoid redundant MkdirAll syscalls.
-func copyFile(dst, src string, srcSize int64, buf []byte, madeDir map[string]bool) (err error) {
-	// Skip if destination already exists with correct size (re-copy / resume).
-	if info, err := os.Stat(dst); err == nil && info.Size() == srcSize {
-		return nil
-	}
+func copyFileCtx(ctx context.Context, dst, src string, srcSize int64, buf []byte, madeDir map[string]bool, fileBytes *atomic.Int64) (err error) {
 	dir := filepath.Dir(dst)
 	if !madeDir[dir] {
 		if err := os.MkdirAll(dir, 0755); err != nil {
@@ -349,14 +384,21 @@ func copyFile(dst, src string, srcSize int64, buf []byte, madeDir map[string]boo
 		return err
 	}
 	defer func() {
-		// On any error, close and remove the temp file.
 		if err != nil {
 			df.Close()
 			os.Remove(partPath)
 		}
 	}()
 
-	n, err := io.CopyBuffer(df, sf, buf)
+	// Wrap the source in a tracking reader for byte counting + cancellation.
+	tr := &trackingReader{
+		r:          sf,
+		ctx:        ctx,
+		counter:    fileBytes,
+		checkEvery: defaultCheckEvery,
+	}
+
+	n, err := io.CopyBuffer(df, tr, buf)
 	if err != nil {
 		return err
 	}
@@ -365,7 +407,6 @@ func copyFile(dst, src string, srcSize int64, buf []byte, madeDir map[string]boo
 		return fmt.Errorf("size mismatch: wrote %d, expected %d", n, srcSize)
 	}
 
-	// Flush to stable storage before rename.
 	if err := df.Sync(); err != nil {
 		return fmt.Errorf("sync: %w", err)
 	}
@@ -374,7 +415,6 @@ func copyFile(dst, src string, srcSize int64, buf []byte, madeDir map[string]boo
 		return fmt.Errorf("close: %w", err)
 	}
 
-	// Atomic rename: .part → final path.
 	if err := os.Rename(partPath, dst); err != nil {
 		os.Remove(partPath)
 		return fmt.Errorf("rename: %w", err)

@@ -3,6 +3,7 @@ package app
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/illwill/cardbot/analyze"
 )
@@ -24,10 +25,11 @@ func TestParseInputAction(t *testing.T) {
 		{"copy selects", "s", true, actionCopySelects},
 		{"copy photos", "p", true, actionCopyPhotos},
 		{"copy videos", "v", true, actionCopyVideos},
+		{"copy today", "t", true, actionCopyToday},
+		{"copy yesterday", "y", true, actionCopyYesterday},
 		{"eject", "e", true, actionEject},
 		{"exit", "x", true, actionExitCard},
 		{"info", "i", true, actionHardwareInfo},
-		{"speed", "t", true, actionSpeedTest},
 		{"uppercase + spaces", "  A  ", true, actionCopyAll},
 		{"unknown with card", "z", true, actionUnknown},
 		{"input but no card", "z", false, actionNoCardMessage},
@@ -54,6 +56,8 @@ func TestModeDisplayName(t *testing.T) {
 		{"selects", "Selects"},
 		{"photos", "Photos"},
 		{"videos", "Videos"},
+		{"today", "Today's photos"},
+		{"yesterday", "Yesterday's photos"},
 		{"", "Copy"},
 		{"custom", "Custom"},
 	}
@@ -68,6 +72,9 @@ func TestModeDisplayName(t *testing.T) {
 
 func TestCopyBlockReason(t *testing.T) {
 	t.Parallel()
+
+	today := time.Now().Format("2006-01-02")
+	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
 
 	tests := []struct {
 		name       string
@@ -88,6 +95,50 @@ func TestCopyBlockReason(t *testing.T) {
 		{"videos no videos", "videos", false, false, false, &analyze.Result{VideoCount: 0}, false},
 		{"videos has videos", "videos", false, false, false, &analyze.Result{VideoCount: 3}, true},
 		{"all allowed", "all", false, false, false, nil, true},
+		{
+			"today no photos",
+			"today", false, false, false,
+			&analyze.Result{FileDates: map[string]string{"100NIKON/DSC_0001.NEF": "1999-01-01"}},
+			false,
+		},
+		{
+			"today has photos",
+			"today", false, false, false,
+			&analyze.Result{FileDates: map[string]string{"100NIKON/DSC_0001.NEF": today}},
+			true,
+		},
+		{
+			"today video only does not count",
+			"today", false, false, false,
+			&analyze.Result{FileDates: map[string]string{"100NIKON/DSC_0001.MOV": today}},
+			false,
+		},
+		{
+			"yesterday no photos",
+			"yesterday", false, false, false,
+			&analyze.Result{FileDates: map[string]string{"100NIKON/DSC_0001.NEF": "1999-01-01"}},
+			false,
+		},
+		{
+			"yesterday has photos",
+			"yesterday", false, false, false,
+			&analyze.Result{FileDates: map[string]string{"100NIKON/DSC_0001.NEF": yesterday}},
+			true,
+		},
+		{
+			"yesterday video only does not count",
+			"yesterday", false, false, false,
+			&analyze.Result{FileDates: map[string]string{"100NIKON/DSC_0001.MOV": yesterday}},
+			false,
+		},
+		{
+			"today nil result",
+			"today", false, false, false, nil, true,
+		},
+		{
+			"yesterday nil result",
+			"yesterday", false, false, false, nil, true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -215,6 +266,46 @@ func TestShouldResumeScanning(t *testing.T) {
 			got := shouldResumeScanning(tt.noCurrentCard, tt.queueLen)
 			if got != tt.want {
 				t.Errorf("shouldResumeScanning(%v, %d) = %v, want %v", tt.noCurrentCard, tt.queueLen, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCountPhotosForDate(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		result *analyze.Result
+		date   string
+		want   int
+	}{
+		{"nil result", nil, "2026-03-25", 0},
+		{"nil FileDates", &analyze.Result{}, "2026-03-25", 0},
+		{"no match", &analyze.Result{
+			FileDates: map[string]string{"100NIKON/DSC_0001.NEF": "2026-03-24"},
+		}, "2026-03-25", 0},
+		{"one photo match", &analyze.Result{
+			FileDates: map[string]string{"100NIKON/DSC_0001.NEF": "2026-03-25"},
+		}, "2026-03-25", 1},
+		{"video not counted", &analyze.Result{
+			FileDates: map[string]string{"100NIKON/DSC_0001.MOV": "2026-03-25"},
+		}, "2026-03-25", 0},
+		{"mixed files", &analyze.Result{
+			FileDates: map[string]string{
+				"100NIKON/DSC_0001.NEF": "2026-03-25",
+				"100NIKON/DSC_0002.MOV": "2026-03-25",
+				"100NIKON/DSC_0003.CR3": "2026-03-25",
+				"100NIKON/DSC_0004.NEF": "2026-03-24",
+			},
+		}, "2026-03-25", 2},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := countPhotosForDate(tt.result, tt.date)
+			if got != tt.want {
+				t.Errorf("countPhotosForDate() = %d, want %d", got, tt.want)
 			}
 		})
 	}

@@ -11,7 +11,7 @@ import (
 	"github.com/illwill/cardbot/config"
 )
 
-var update = flag.Bool("update", false, "update golden files")
+var updateGolden = flag.Bool("update", false, "update golden files")
 
 func TestFprintDaemonStatusReport_default(t *testing.T) {
 	t.Parallel()
@@ -48,7 +48,7 @@ func TestFprintDaemonStatusReport_default(t *testing.T) {
 	fprintDaemonStatusReport(&buf, report)
 
 	golden := filepath.Join("testdata", t.Name()+".golden")
-	if *update {
+	if *updateGolden {
 		os.MkdirAll("testdata", 0755)
 		os.WriteFile(golden, buf.Bytes(), 0644)
 		return
@@ -74,7 +74,7 @@ func TestFprintVerboseSettings_defaults(t *testing.T) {
 	fprintVerboseSettings(&buf, cfg, cfgPath)
 
 	golden := filepath.Join("testdata", t.Name()+".golden")
-	if *update {
+	if *updateGolden {
 		os.MkdirAll("testdata", 0755)
 		os.WriteFile(golden, buf.Bytes(), 0644)
 		return
