@@ -12,7 +12,7 @@ Specific version:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/willduncanphoto/CardBot/main/scripts/install.sh | sh -s -- --version <version>
-# example: --version v0.5.2
+# example: --version v0.7.2
 ```
 
 Install to custom path without sudo:
@@ -318,3 +318,11 @@ Set `daemon.debug` to `true` to enable verbose daemon/launcher debug logging.
 - Hardened CLI subcommand routing
 - Code review cleanup: shared `detect.IsHidden()`, `SequenceDigits` constant,
   `bytes.Equal` in verify, removed dead aliases, relocated helpers
+
+### 0.7.x updates (0.7.1–0.7.2)
+
+- 0.7.1: Release version bump.
+- 0.7.2:
+  - UI polish: update-available notice aligned with startup log indentation.
+  - UI polish: refreshed ASCII CardBot logo spacing for cleaner terminal output.
+  - Docs refresh: README cleanup and public roadmap update.

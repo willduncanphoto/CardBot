@@ -2,6 +2,8 @@
 
 A CLI tool for camera memory cards
 
+Current stable release: **v0.7.2**
+
 ![CardBot screenshot](screenshot.png) 
 
 ## What CardBot does
