@@ -24,7 +24,7 @@ CardBot was built with the assistance of AI coding tools. This project is an exp
 | Linux | I heard it works | Untested |
 | Windows | Ugh | Someday, Maybe |
 
-**macOS 10.13** and above according to the clankers.
+Recommended minimum: macOS 10.13 High Sierra (according to the clankers)
 
 ## CardBot's Codebase
 
