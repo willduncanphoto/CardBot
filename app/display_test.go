@@ -327,10 +327,10 @@ func TestSetLastTS_DifferentSecond_ShowsTimestamp(t *testing.T) {
 }
 
 func TestDimTS(t *testing.T) {
-	got := dimTS("2026-03-22T12:00:00")
+	got := DimTS("2026-03-22T12:00:00")
 	want := "\033[2m[2026-03-22T12:00:00]\033[0m"
 	if got != want {
-		t.Fatalf("dimTS = %q, want %q", got, want)
+		t.Fatalf("DimTS = %q, want %q", got, want)
 	}
 }
 

@@ -52,7 +52,7 @@ func (a *App) handleCardEvent(card *detect.Card) {
 		}
 		fmt.Printf("%s %s\n", a.TsPrefix(), formatDetectedVolume(card.Path, diskID))
 		a.logf("Card detected: %s", card.Path)
-		scanTS := Ts()
+		scanTS := DimTS(Ts())
 		ctx, cancel := context.WithCancel(a.ctx)
 		a.scanCancel = cancel
 		go a.displayCard(ctx, card.Path, scanTS)
@@ -116,7 +116,7 @@ func (a *App) analyzeCard(ctx context.Context, path, scanTS string) (*analyze.Re
 		analyzer.SetWorkers(a.cfg.Advanced.ExifWorkers)
 		analyzer.OnProgress(func(count int) {
 			if count%100 == 0 {
-				fmt.Printf("\r[%s] Scanning %d files", scanTS, count)
+				fmt.Printf("\r%s Scanning %d files", scanTS, count)
 			}
 		})
 
@@ -236,7 +236,7 @@ func (a *App) finishCard() {
 		ctx, cancel := context.WithCancel(a.ctx)
 		a.scanCancel = cancel
 		a.mu.Unlock()
-		go a.displayCard(ctx, nextCard.Path, Ts())
+		go a.displayCard(ctx, nextCard.Path, DimTS(Ts()))
 		return
 	}
 	a.mu.Unlock()
@@ -292,7 +292,7 @@ func (a *App) handleRemoval(path string) {
 		fmt.Printf("\n%s Card removed: %s\n", a.TsPrefix(), path)
 		a.logf("Card removed: %s", path)
 		if hasQueue {
-			go a.displayCard(nextCtx, nextCard.Path, Ts())
+			go a.displayCard(nextCtx, nextCard.Path, DimTS(Ts()))
 		} else {
 			go func() {
 				time.Sleep(removalDelay)
@@ -441,7 +441,7 @@ func (a *App) launchTargetPath(path string) {
 	a.setPhaseLocked(phaseAnalyzing)
 	a.mu.Unlock()
 
-	scanTS := Ts()
+	scanTS := DimTS(Ts())
 	fmt.Printf("%s Scanning ✓\n", a.TsPrefix())
 	fmt.Printf("%s \"%s\" (target)\n", tsIndent, path)
 	a.logf("Target path: %s", path)

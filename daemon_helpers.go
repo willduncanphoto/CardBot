@@ -113,12 +113,12 @@ func syncDaemonAutoStartFromConfig(cfg *config.Config) {
 			fmt.Fprintf(os.Stderr, "Warning: could not install launch agent: %v\n", err)
 			return
 		}
-		fmt.Printf("[%s] Start-at-login enabled\n", app.Ts())
+		fmt.Printf("%s Start-at-login enabled\n", app.DimTS(app.Ts()))
 		return
 	}
 
 	if st, err := launchagent.CurrentStatus(); err == nil && !st.Installed {
-		fmt.Printf("[%s] Start-at-login already disabled\n", app.Ts())
+		fmt.Printf("%s Start-at-login already disabled\n", app.DimTS(app.Ts()))
 		return
 	}
 
@@ -126,7 +126,7 @@ func syncDaemonAutoStartFromConfig(cfg *config.Config) {
 		fmt.Fprintf(os.Stderr, "Warning: could not uninstall launch agent: %v\n", err)
 		return
 	}
-	fmt.Printf("[%s] Start-at-login disabled\n", app.Ts())
+	fmt.Printf("%s Start-at-login disabled\n", app.DimTS(app.Ts()))
 }
 
 func updateSavedDaemonPrefs(mutator func(cfg *config.Config)) {
