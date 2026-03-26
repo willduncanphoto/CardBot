@@ -24,7 +24,7 @@ import (
 
 // Set at build time via -ldflags.
 var (
-	version = "0.8.1"
+	version = "0.8.2"
 	commit  = "none"
 	date    = "unknown"
 )
@@ -215,7 +215,7 @@ func runInteractive() int {
 		if checkErr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not verify running instances: %v\n", checkErr)
 		} else if hasOther {
-			fmt.Printf("[%s] CardBot is already running — skipping duplicate instance\n", app.Ts())
+			fmt.Printf("%s CardBot is already running — skipping duplicate instance\n", app.DimTS(app.Ts()))
 			if logger != nil {
 				logger.Printf("Duplicate interactive launch skipped: another %s process is already running", processName)
 			}
@@ -236,7 +236,7 @@ func runInteractive() int {
 
 	// Print any config warnings now that logging is ready.
 	for _, w := range cfgWarnings {
-		a.Printf("[%s] Warning: %s\n", app.Ts(), w)
+		a.Printf("%s Warning: %s\n", app.DimTS(app.Ts()), w)
 	}
 
 	// Checklist bootup — shared by normal and verbose modes.
@@ -250,11 +250,11 @@ func runInteractive() int {
 	// Step 1: Starting CardBot.
 	ts1 := app.Ts()
 	s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-	s.Prefix = fmt.Sprintf("\033[2m[%s]\033[0m Starting CardBot v%s ", ts1, version)
+	s.Prefix = fmt.Sprintf("%s Starting CardBot v%s ", app.DimTS(ts1), version)
 	s.Start()
 	time.Sleep(300 * time.Millisecond)
 	s.Stop()
-	fmt.Printf("\r\033[2m[%s]\033[0m Starting CardBot v%s ✓%s\n", ts1, version, clearEOL)
+	fmt.Printf("\r%s Starting CardBot v%s ✓%s\n", app.DimTS(ts1), version, clearEOL)
 
 	// What's new: show changelog on first run of a new version.
 	if cfg.Meta.LastSeenVersion == "" {
@@ -266,7 +266,7 @@ func runInteractive() int {
 	} else if cfg.Meta.LastSeenVersion != version {
 		bullets := parseChangelogSection(changelogRaw, version)
 		if len(bullets) > 0 {
-			fprintChangelog(os.Stdout, indent, bullets)
+			fprintChangelog(os.Stdout, bullets)
 		}
 		cfg.Meta.LastSeenVersion = version
 		if cfgPath != "" {
@@ -285,7 +285,7 @@ func runInteractive() int {
 	if ts2 == ts1 {
 		s.Prefix = indent + " Checking for updates "
 	} else {
-		s.Prefix = fmt.Sprintf("\033[2m[%s]\033[0m Checking for updates ", ts2)
+		s.Prefix = fmt.Sprintf("%s Checking for updates ", app.DimTS(ts2))
 	}
 	s.Start()
 	latest, updateErr := app.MaybeCheckForUpdate(logger, version, update.CheckLatest)
@@ -297,7 +297,7 @@ func runInteractive() int {
 	if ts2 == ts1 {
 		fmt.Printf("\r%s Checking for updates %s%s\n", indent, updateMark, clearEOL)
 	} else {
-		fmt.Printf("\r\033[2m[%s]\033[0m Checking for updates %s%s\n", ts2, updateMark, clearEOL)
+		fmt.Printf("\r%s Checking for updates %s%s\n", app.DimTS(ts2), updateMark, clearEOL)
 	}
 
 	// Update notification.
@@ -314,7 +314,7 @@ func runInteractive() int {
 	}
 
 	if *flagDryRun {
-		a.Printf("[%s] Dry-run mode — no files will be copied\n", app.Ts())
+		a.Printf("%s Dry-run mode — no files will be copied\n", app.DimTS(app.Ts()))
 	}
 
 	if targetPath == "" {

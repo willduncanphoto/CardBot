@@ -30,6 +30,7 @@ func TestParseInputAction(t *testing.T) {
 		{"eject", "e", true, actionEject},
 		{"exit", "x", true, actionExitCard},
 		{"info", "i", true, actionHardwareInfo},
+		{"cancel copy", "\\", true, actionCancelCopy},
 		{"uppercase + spaces", "  A  ", true, actionCopyAll},
 		{"unknown with card", "z", true, actionUnknown},
 		{"input but no card", "z", false, actionNoCardMessage},

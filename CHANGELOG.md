@@ -1,9 +1,14 @@
 # CardBot Changelog
 
+## 0.8.2
+
+- Changelog shown on first run after update
+- Fix cancel copy [\] outside active copy
+- Fix timestamp dimming in output
+
 ## 0.8.1
 
-- What's new: shows changelog on first run after upgrade
-- Update notice aligned with startup output
+- Add changelog output for after CardBot updates
 
 ## 0.8.0
 

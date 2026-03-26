@@ -23,6 +23,7 @@ const (
 	actionEject
 	actionExitCard
 	actionHardwareInfo
+	actionCancelCopy
 	actionNoCardMessage
 	actionUnknown
 )
@@ -63,6 +64,8 @@ func parseInputAction(input string, hasCard bool) inputAction {
 		return actionExitCard
 	case "i":
 		return actionHardwareInfo
+	case "\\":
+		return actionCancelCopy
 	default:
 		return actionUnknown
 	}

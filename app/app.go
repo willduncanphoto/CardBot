@@ -117,8 +117,8 @@ func Ts() string {
 // tsIndent is whitespace matching the width of a "[2006-01-02T15:04:05]" timestamp.
 const tsIndent = "                     "
 
-// dimTS returns a dimmed timestamp string using ANSI escape codes.
-func dimTS(ts string) string {
+// DimTS returns a dimmed timestamp string using ANSI escape codes.
+func DimTS(ts string) string {
 	return "\033[2m[" + ts + "]\033[0m"
 }
 
@@ -131,7 +131,7 @@ func (a *App) TsPrefix() string {
 		return tsIndent
 	}
 	a.lastTS = now
-	return dimTS(now)
+	return DimTS(now)
 }
 
 // SetLastTS records a timestamp so that TsPrefix can deduplicate it.
@@ -219,7 +219,7 @@ func (a *App) startScanningLocked() {
 		a.spinner.Stop()
 	}
 	s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-	s.Prefix = fmt.Sprintf("[%s] Scanning ", Ts())
+	s.Prefix = fmt.Sprintf("%s Scanning ", DimTS(Ts()))
 	s.Start()
 	a.spinner = s
 	a.setPhaseLocked(phaseScanning)
