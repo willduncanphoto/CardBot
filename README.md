@@ -4,6 +4,14 @@ A CLI tool for camera memory cards.
 
 ![CardBot screenshot](screenshot.png) 
 
+## DISCLAIMER - Built with AI coding tools
+CardBot is built with the assistance of AI coding tools. This project is an experiment in using large language models to rapidly prototype and build an application in Go, a programming language I barely know.
+
+A special thanks goes out to Pi — a terminal-based coding agent.
+
+Website: pi.dev
+GitHub: github.com/badlogic/pi-mono
+
 ## What CardBot does
 
 - Detects camera memory cards on macOS
@@ -16,9 +24,9 @@ A CLI tool for camera memory cards.
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| macOS | Supported | Tested |
-| Linux | I'm told it works | Untested |
-| Windows | Ugh | Someday, Maybe Not |
+| macOS | Uh huh | In Progress |
+| Linux | I heard it works | Untested |
+| Windows | Ugh | Someday, Maybe |
 
 ## By the numbers
 
