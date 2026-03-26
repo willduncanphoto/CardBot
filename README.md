@@ -76,9 +76,7 @@ cardbot --setup
 
 | Version | Focus | Status |
 |---------|-------|--------|
-| **0.7.0** | Code Refactor | Complete |
-| **0.8.0** | Card copy operations | In Progress |
-| **0.9.0** | Stuff | Planned |
+| **0.9.0** | Card copy improvements | Current |
 | **0.10.0** | Copyright check and injection | Planned |
 | **0.11.0** | Automatic Card Detection | Planned |
 

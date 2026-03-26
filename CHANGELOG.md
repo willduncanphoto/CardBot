@@ -2,7 +2,9 @@
 
 ## 0.8.2
 
-- Changelog now shown on first run after an update
+- Changelog shown on first run after update
+- Fix cancel copy [\] outside active copy
+- Fix timestamp dimming in output
 
 ## 0.8.1
 

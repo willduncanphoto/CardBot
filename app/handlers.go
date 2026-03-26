@@ -363,6 +363,9 @@ func (a *App) handleInput(input string) {
 		a.cancelCard()
 	case actionHardwareInfo:
 		a.showHardwareInfo(card)
+	case actionCancelCopy:
+		fmt.Printf("\n%s No copy in progress.\n", DimTS(Ts()))
+		a.printPrompt()
 	case actionUnknown:
 		fmt.Printf("\nUnknown command %q. Press [?] for help.\n", input)
 		a.printPrompt()
