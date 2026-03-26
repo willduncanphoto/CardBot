@@ -20,6 +20,12 @@ A CLI tool for camera memory cards.
 | Linux | I'm told it works | Untested |
 | Windows | Ugh | Someday, Maybe Not |
 
+## By the numbers
+
+- **~7 MB** installed binary (single static executable, no dependencies)
+- **~8,200** lines of Go source across 17 packages
+- **~7,800** lines of tests — roughly 1:1 coverage ratio
+
 ## Installation
 
 The easy install:
